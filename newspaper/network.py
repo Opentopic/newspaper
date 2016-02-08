@@ -71,7 +71,7 @@ def get_html(url, config=None, response=None):
 
     base_dir = os.path.abspath(os.path.dirname(__file__))
     casper_script_path = os.path.join(base_dir, 'casperjs/get_page_content.js')
-    casper_script_path = getattr(config, 'script_path', casper_script_path)
+    casper_script_path = getattr(config, 'casper_script_path', casper_script_path)
 
     command = command_formula.format(
         casperjs=CASPERJS_PATH,
