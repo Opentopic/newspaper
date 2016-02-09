@@ -68,6 +68,8 @@ class Configuration(object):
         # strategy for network.get_html()
         self.use_casperjs = False
 
+        self.video_detect_provider = False
+
         # Set this to False if you want to recompute the categories
         # *every* time you build a `Source` object
         # TODO: Actually make this work
