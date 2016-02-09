@@ -107,8 +107,12 @@ class VideoExtractor(object):
             attr = "get_%s_tag" % tag
             if hasattr(self, attr):
                 movie = getattr(self, attr)(candidate)
-                if movie is not None and movie.provider is not None:
-                    self.movies.append(movie)
+                if movie is not None:
+                    if self.config.video_detect_provider:
+                        if movie.provider is not None:
+                            self.movies.append(movie)
+                    else:
+                        self.movies.append(movie)
 
         return list(self.movies)
         # append movies list to article
