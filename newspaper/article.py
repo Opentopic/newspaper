@@ -177,7 +177,7 @@ class Article(object):
         document_cleaner = DocumentCleaner(self.config)
         output_formatter = OutputFormatter(self.config)
 
-        title = self.extractor.get_title(self.clean_doc)
+        title = self.extractor.get_title(self.url, self.clean_doc)
         self.set_title(title)
 
         authors = self.extractor.get_authors(self.clean_doc)

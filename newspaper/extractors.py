@@ -221,7 +221,7 @@ class ContentExtractor(object):
 
         return None
 
-    def get_title(self, doc):
+    def get_title(self, article_url, doc):
         """Fetch the article title and analyze it
         """
         title = ''
@@ -252,7 +252,9 @@ class ContentExtractor(object):
             used_delimeter = True
 
         # split title with -
-        if not used_delimeter and '-' in title_text:
+        if not used_delimeter and '-' in title_text and \
+            self.check_if_host_in_title(article_url, title_text,
+                                        DASH_SPLITTER):
             title_text = self.split_title(title_text, DASH_SPLITTER)
             used_delimeter = True
 
@@ -271,7 +273,9 @@ class ContentExtractor(object):
             used_delimeter = True
 
         # split title with :
-        if not used_delimeter and ':' in title_text:
+        if not used_delimeter and ':' in title_text and \
+            self.check_if_host_in_title(article_url, title_text,
+                                        COLON_SPLITTER):
             title_text = self.split_title(title_text, COLON_SPLITTER)
             used_delimeter = True
 
@@ -295,6 +299,19 @@ class ContentExtractor(object):
         # replace content
         title = title_pieces[large_text_index]
         return TITLE_REPLACEMENTS.replaceAll(title).strip()
+
+    def check_if_host_in_title(self, article_url, title, splitter):
+        hostname = urllib.parse.urlparse(article_url).hostname.lower()
+        hostnames = [hostname]
+        if 'www' in hostname:
+            hostnames.append(hostname.replace('www.', ''))
+
+        title_pieces = splitter.split(title)
+        for t in title_pieces:
+            for h in hostnames:
+                if h == t.strip().lower():
+                    return True
+        return False
 
     def get_feed_urls(self, source_url, categories):
         """Takes a source url and a list of category objects and returns
