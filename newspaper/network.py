@@ -53,19 +53,15 @@ def get_html(url, config=None, response=None):
         return response.content
 
     def _get_using_requests():
-        try:
-            response = requests.get(
-                url=url, **get_request_kwargs(timeout, useragent))
-            if response.encoding != FAIL_ENCODING:
-                html = response.text
-            else:
-                html = response.content
-            if html is None:
-                html = ''
-            return html
-        except Exception as e:
-            log.debug('%s on %s' % (e, url))
-            return ''
+        response = requests.get(
+            url=url, **get_request_kwargs(timeout, useragent))
+        if response.encoding != FAIL_ENCODING:
+            html = response.text
+        else:
+            html = response.content
+        if html is None:
+            html = ''
+        return html
 
     if not config.use_casperjs:
         return _get_using_requests()
