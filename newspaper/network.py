@@ -52,7 +52,7 @@ def get_html(url, config=None, response=None):
             return response.text
         return response.content
 
-    if not config.use_casperjs:
+    def _get_using_requests():
         try:
             response = requests.get(
                 url=url, **get_request_kwargs(timeout, useragent))
@@ -67,6 +67,9 @@ def get_html(url, config=None, response=None):
             log.debug('%s on %s' % (e, url))
             return ''
 
+    if not config.use_casperjs:
+        return _get_using_requests()
+
     command_formula = ('{casperjs} {script} {url}')
 
     base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -75,9 +78,13 @@ def get_html(url, config=None, response=None):
         script=os.path.join(base_dir, 'casperjs/get_page_content.js'),
         url=url)
 
-    p = subprocess.Popen(command.split(), stdout=subprocess.PIPE,
-                         stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-    output, err = p.communicate()
+    try:
+        p = subprocess.Popen(
+            command.split(), stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, err = p.communicate(timeout=30)
+    except subprocess.TimeoutExpired as e:
+        return _get_using_requests()
 
     return output
 
