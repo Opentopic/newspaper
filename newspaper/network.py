@@ -82,7 +82,7 @@ def get_html(url, config=None, response=None):
         p = subprocess.Popen(
             command.split(), stdout=subprocess.PIPE,
             stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, err = p.communicate(timeout=30)
+        output, err = p.communicate(timeout=timeout)
     except subprocess.TimeoutExpired as e:
         return _get_using_requests()
 
