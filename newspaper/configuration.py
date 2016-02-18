@@ -67,6 +67,7 @@ class Configuration(object):
 
         # strategy for network.get_html()
         self.use_casperjs = False
+        self.use_selenium = False
 
         self.video_detect_provider = False
 

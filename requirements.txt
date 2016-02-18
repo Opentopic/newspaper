@@ -11,3 +11,4 @@ tldextract==1.5.1
 feedfinder2==0.0.1
 jieba3k==0.35.1
 python-dateutil==2.4.0
+selenium==2.52.0

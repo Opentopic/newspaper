@@ -56,33 +56,40 @@ def get_html(url, config=None, response=None):
         response = requests.get(
             url=url, **get_request_kwargs(timeout, useragent))
         if response.encoding != FAIL_ENCODING:
-            html = response.text
-        else:
-            html = response.content
-        if html is None:
-            html = ''
+            return response.text or ''
+        return response.content or ''
+
+    if config.use_casperjs:
+        command_formula = '{casperjs} {script} {url}'
+
+        base_dir = os.path.abspath(os.path.dirname(__file__))
+        command = command_formula.format(
+            casperjs=CASPERJS_PATH,
+            script=os.path.join(base_dir, 'casperjs/get_page_content.js'),
+            url=url)
+        try:
+            p = subprocess.Popen(
+                command.split(), stdout=subprocess.PIPE,
+                stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, err = p.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired as e:
+            return _get_using_requests()
+
+        return output
+
+    elif config.use_selenium:
+        from selenium import webdriver
+
+        browser = webdriver.Firefox()
+        browser.get(url)
+        html = browser.page_source
+        browser.quit()
+        del browser
         return html
 
-    if not config.use_casperjs:
-        return _get_using_requests()
+    return _get_using_requests()
 
-    command_formula = ('{casperjs} {script} {url}')
 
-    base_dir = os.path.abspath(os.path.dirname(__file__))
-    command = command_formula.format(
-        casperjs=CASPERJS_PATH,
-        script=os.path.join(base_dir, 'casperjs/get_page_content.js'),
-        url=url)
-
-    try:
-        p = subprocess.Popen(
-            command.split(), stdout=subprocess.PIPE,
-            stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, err = p.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired as e:
-        return _get_using_requests()
-
-    return output
 
 
 class MRequest(object):
