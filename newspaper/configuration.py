@@ -66,8 +66,7 @@ class Configuration(object):
         self.thread_timeout_seconds = 1
 
         # strategy for network.get_html()
-        self.use_casperjs = False
-        self.use_selenium = False
+        self.content_strategy = 'requests'
 
         self.video_detect_provider = False
 

@@ -59,7 +59,7 @@ def get_html(url, config=None, response=None):
             return response.text or ''
         return response.content or ''
 
-    if config.use_casperjs:
+    if config.content_strategy == 'casperjs':
         command_formula = '{casperjs} {script} {url}'
 
         base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -77,7 +77,7 @@ def get_html(url, config=None, response=None):
 
         return output
 
-    elif config.use_selenium:
+    elif config.content_strategy == 'selenium':
         from selenium import webdriver
 
         browser = webdriver.Firefox()
