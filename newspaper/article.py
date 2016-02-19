@@ -58,6 +58,7 @@ class Article(object):
         self.source_url = source_url
 
         self.url = urls.prepare_url(url, self.source_url)
+        self.long_url = url
 
         self.title = title
 
