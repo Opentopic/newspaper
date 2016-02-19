@@ -80,13 +80,15 @@ def get_html(url, config=None, response=None):
     elif config.content_strategy == 'selenium':
         from selenium import webdriver
         from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+        import pyvirtualdisplay
 
-        browser = webdriver.Firefox(firefox_binary=FirefoxBinary(
-            log_file=config.content_strategy_log_file))
-        browser.get(url)
-        html = browser.page_source
-        browser.quit()
-        del browser
+        with pyvirtualdisplay.Display():
+            browser = webdriver.Firefox(firefox_binary=FirefoxBinary(
+                log_file=config.content_strategy_log_file))
+            browser.get(url)
+            html = browser.page_source
+            browser.quit()
+            del browser
         return html
 
     return _get_using_requests()
