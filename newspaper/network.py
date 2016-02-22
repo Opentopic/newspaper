@@ -19,7 +19,7 @@ from .configuration import Configuration
 from .mthreading import ThreadPool
 from .settings import cj
 
-log = logging.getLogger(__name__)
+log = logging.getLogger()
 
 
 def get_request_kwargs(timeout, useragent):
@@ -55,6 +55,7 @@ def get_html(url, config=None, response=None):
     def _get_using_requests():
         response = requests.get(
             url=url, **get_request_kwargs(timeout, useragent))
+        log.info('Url: {} got response from Requests'.format(url))
         if response.encoding != FAIL_ENCODING:
             return response.text or ''
         return response.content or ''
@@ -72,7 +73,9 @@ def get_html(url, config=None, response=None):
                 command.split(), stdout=subprocess.PIPE,
                 stdin=subprocess.PIPE, stderr=subprocess.PIPE)
             output, err = p.communicate(timeout=timeout)
+            log.info('Url: {} got response from CasperJS'.format(url))
         except subprocess.TimeoutExpired as e:
+            log.info('Url: {} got timeout from CasperJS'.format(url))
             return _get_using_requests()
 
         return output
@@ -86,6 +89,7 @@ def get_html(url, config=None, response=None):
             browser = webdriver.Firefox(firefox_binary=FirefoxBinary(
                 log_file=config.content_strategy_log_file))
             browser.get(url)
+            log.info('Url: {} got response from Selenium'.format(url))
             html = browser.page_source
             browser.quit()
             del browser

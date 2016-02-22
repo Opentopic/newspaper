@@ -29,7 +29,7 @@ from .utils import (URLHelper, RawHelper, extend_config,
                     get_available_languages)
 from .videos.extractors import VideoExtractor
 
-log = logging.getLogger(__name__)
+log = logging.getLogger()
 
 
 class ArticleException(Exception):
@@ -146,10 +146,15 @@ class Article(object):
         Don't normally call this method b/c it's good to multithread articles
         on a source (newspaper) level.
         """
+        log.info('Url: {} starting to download'.format(self.url))
         self.download()
+        log.info('Url: {} starting to parse'.format(self.url))
         self.parse()
+        log.info('Url: {} starting to nlp'.format(self.url))
         self.nlp()
+        log.info('Url: {} starting to detect_language'.format(self.url))
         self.detect_language()
+        log.info('Url: {} ending build'.format(self.url))
 
     def download(self, html=None):
         """Downloads the link's HTML content, don't use if you are batch async
