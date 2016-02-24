@@ -5,6 +5,8 @@ must be abstracted in this file.
 """
 import os
 import subprocess
+from urlparse import urljoin
+
 from . import CASPERJS_PATH
 
 __title__ = 'newspaper'
@@ -103,11 +105,11 @@ def get_html(url, config=None, response=None):
             'define in config the `host` key in content_strategy[\'kwargs\']'
         payload = {
             'url': url,
-            'timeout': 30,
+            'timeout': timeout,
             'wait': 0.5
         }
-        endpoint = '{}/render.html'.format(
-            config.content_strategy['kwargs']['host'])
+        endpoint = urljoin(
+            config.content_strategy['kwargs']['host'], '/render.html')
         resp = requests.get(endpoint, params=payload)
         log.info('Url: {} got response from Splash'.format(url))
         return resp.content
