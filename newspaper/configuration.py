@@ -67,7 +67,6 @@ class Configuration(object):
 
         # strategy for network.get_html()
         self.content_strategy = 'requests'
-        self.content_strategy_log_file = None
 
         self.video_detect_provider = False
 

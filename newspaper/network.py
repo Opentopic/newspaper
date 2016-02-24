@@ -60,7 +60,7 @@ def get_html(url, config=None, response=None):
             return response.text or ''
         return response.content or ''
 
-    if config.content_strategy == 'casperjs':
+    if config.content_strategy['name'] == 'casperjs':
         command_formula = '{casperjs} {script} {url}'
 
         base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -80,20 +80,37 @@ def get_html(url, config=None, response=None):
 
         return output
 
-    elif config.content_strategy == 'selenium':
+    elif config.content_strategy['name'] == 'selenium':
         from selenium import webdriver
         from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
         import pyvirtualdisplay
 
+        log_file = config.content_strategy['kwargs'].get('log_file')
+
         with pyvirtualdisplay.Display():
             browser = webdriver.Firefox(firefox_binary=FirefoxBinary(
-                log_file=config.content_strategy_log_file))
+                log_file=log_file))
             browser.get(url)
             log.info('Url: {} got response from Selenium'.format(url))
             html = browser.page_source
             browser.quit()
             del browser
         return html
+
+    elif config.content_strategy['name'] == 'splash':
+        assert 'host' in config.content_strategy['kwargs'], \
+            'If you want to use `Splash` as content strategy, you must ' \
+            'define in config the `host` key in content_strategy[\'kwargs\']'
+        payload = {
+            'url': url,
+            'timeout': 30,
+            'wait': 0.5
+        }
+        endpoint = '{}/render.html'.format(
+            config.content_strategy['kwargs']['host'])
+        resp = requests.get(endpoint, params=payload)
+        log.info('Url: {} got response from Splash'.format(url))
+        return resp.content
 
     return _get_using_requests()
 
