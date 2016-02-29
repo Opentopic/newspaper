@@ -113,7 +113,8 @@ def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
             if not content_type:
                 return nothing
 
-            if 'image' in content_type:
+            if 'image' in content_type or \
+                    content_type == 'application/octet-stream':
                 p = ImageFile.Parser()
                 new_data = content
                 while not p.image and new_data:
