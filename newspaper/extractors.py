@@ -79,17 +79,18 @@ class ContentExtractor(object):
         def contains_digits(d):
             return bool(_digits.search(d))
 
-        def uniqify_list(l):
-           """Remove duplicates from provided list but maintain original order.
+        def uniqify_list(lst):
+            """Remove duplicates from provided list but maintain original order.
               Derived from http://www.peterbe.com/plog/uniqifiers-benchmark
-           """
-           seen = {}
-           result = []
-           for item in l:
-               if item.lower() in seen: continue
-               seen[item.lower()] = 1
-               result.append(item.title())
-           return result
+            """
+            seen = {}
+            result = []
+            for item in lst:
+                if item.lower() in seen:
+                    continue
+                seen[item.lower()] = 1
+                result.append(item.title())
+            return result
 
         def parse_byline(search_str):
             """Takes a candidate line of html or text and
@@ -463,21 +464,33 @@ class ContentExtractor(object):
         return data
 
     def get_canonical_link(self, article_url, doc):
-        """If the article has meta canonical link set in the url
         """
-        kwargs = {'tag': 'link', 'attr': 'rel', 'value': 'canonical'}
-        meta = self.parser.getElementsByTag(doc, **kwargs)
-        if meta is not None and len(meta) > 0:
-            href = self.parser.getAttribute(meta[0], 'href')
-            if href:
-                href = href.strip()
-                o = urllib.parse.urlparse(href)
-                if not o.hostname:
-                    z = urllib.parse.urlparse(article_url)
-                    domain = '%s://%s' % (z.scheme, z.hostname)
-                    href = urllib.parse.urljoin(domain, href)
-                return href
-        return ''
+        Return the article's canonical URL
+
+        Gets the first available value of:
+        1. The rel=canonical tag
+        2. The og:url tag
+        """
+
+        result = ''
+
+        links = self.parser.getElementsByTag(doc, tag='link', attr='rel', value='canonical')
+        canonical = self.parser.getAttribute(links[0], 'href') if links else ''
+
+        og_url = self.get_meta_content(doc, 'meta[property="og:url"]')
+
+        if canonical:
+            canonical = canonical.strip()
+            o = urllib.parse.urlparse(canonical)
+            if not o.hostname:
+                z = urllib.parse.urlparse(article_url)
+                domain = '%s://%s' % (z.scheme, z.hostname)
+                canonical = urllib.parse.urljoin(domain, canonical)
+            result = canonical
+        elif og_url:
+            result = og_url  # fallback to og:url tag, must be the full url
+
+        return result
 
     def get_img_urls(self, article_url, doc):
         """Return all of the images on an html page, lxml root
@@ -594,7 +607,7 @@ class ContentExtractor(object):
                                'subdomain' % p_url))
                     continue
                 else:
-                    valid_categories.append(scheme+'://'+domain)
+                    valid_categories.append(scheme + '://' + domain)
                     # TODO account for case where category is in form
                     # http://subdomain.domain.tld/category/ <-- still legal!
             else:
@@ -605,7 +618,7 @@ class ContentExtractor(object):
                     path_chunks.remove('index.html')
 
                 if len(path_chunks) == 1 and len(path_chunks[0]) < 14:
-                    valid_categories.append(domain+path)
+                    valid_categories.append(domain + path)
                 else:
                     if self.config.verbose:
                         print(('elim category url %s for >1 path chunks '
