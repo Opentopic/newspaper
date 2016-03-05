@@ -55,12 +55,13 @@ def get_html(url, config=None, response=None):
         return response.content
 
     def _get_using_requests():
-        response = requests.get(
+        s = requests.Session()
+        _response = s.get(
             url=url, **get_request_kwargs(timeout, useragent))
         log.info('Url: {} got response from Requests'.format(url))
-        if response.encoding != FAIL_ENCODING:
-            return response.text or ''
-        return response.content or ''
+        if _response.encoding != FAIL_ENCODING:
+            return _response.text or ''
+        return _response.content or ''
 
     if config.content_strategy['name'] == 'casperjs':
         command_formula = '{casperjs} {script} {url}'

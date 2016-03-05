@@ -224,6 +224,13 @@ class Article(object):
             self.url,
             self.clean_doc)
 
+        # check for known node as content body
+        # if we find one force the article.doc to be the found node
+        # this will prevent the cleaner to remove unwanted text content
+        article_body = self.extractor.get_known_article_tags(self.doc)
+        if article_body is not None:
+            self.doc = article_body
+
         # Before any computations on the body, clean DOM object
         self.doc = document_cleaner.clean(self.doc)
 

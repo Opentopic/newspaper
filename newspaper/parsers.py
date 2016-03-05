@@ -266,3 +266,12 @@ class Parser(object):
             e0 = deepcopy(e0)
             e0.tail = None
         return cls.nodeToString(e0)
+
+    @classmethod
+    def is_tag_visible(cls, tag):
+        _style = tag.get('style')
+        if _style and \
+            re.search(
+                r'(display:[\s]*none|visibility:[\s]*hidden)', _style.lower()):
+            return False
+        return True

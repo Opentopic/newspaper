@@ -50,6 +50,11 @@ bad_chunks = ['careers', 'contact', 'about', 'faq', 'terms', 'privacy',
               'advert', 'preferences', 'feedback', 'info', 'browse', 'howto',
               'account', 'subscribe', 'donate', 'shop', 'admin']
 bad_domains = ['amazon', 'doubleclick', 'twitter']
+KNOWN_ARTICLE_CONTENT_TAGS = [
+    {'attr': 'itemprop', 'value': 'articleBody'},
+    {'attr': 'class', 'value': 'post-content'},
+    {'tag': 'article'},
+]
 
 
 class ContentExtractor(object):
@@ -170,6 +175,26 @@ class ContentExtractor(object):
         #    return [] # Failed to find anything
         # return authors
 
+    def get_known_article_tags(self, doc):
+        for item in KNOWN_ARTICLE_CONTENT_TAGS:
+            nodes = self.parser.getElementsByTag(doc, **item)
+            if len(nodes):
+                return nodes[0]
+        return None
+
+    def is_articlebody(self, node):
+        for item in KNOWN_ARTICLE_CONTENT_TAGS:
+            # attribute
+            if "attr" in item and "value" in item:
+                if self.parser.getAttribute(
+                        node, item['attr']) == item['value']:
+                    return True
+            # tag
+            if "tag" in item:
+                if node.tag == item['tag']:
+                    return True
+        return False
+
     def get_publishing_date(self, url, doc):
         """3 strategies for publishing date extraction. The strategies
         are descending in accuracy and the next strategy is only
@@ -259,14 +284,14 @@ class ContentExtractor(object):
             title_text = self.split_title(title_text, DASH_SPLITTER)
             used_delimeter = True
 
-        # split title with _
-        if not used_delimeter and '_' in title_text:
-            title_text = self.split_title(title_text, UNDERSCORE_SPLITTER)
-
-        # split title with /
-        if not used_delimeter and '/' in title_text:
-            title_text = self.split_title(title_text, SLASH_SPLITTER)
-            used_delimeter = True
+        # # split title with _
+        # if not used_delimeter and '_' in title_text:
+        #     title_text = self.split_title(title_text, UNDERSCORE_SPLITTER)
+        #
+        # # split title with /
+        # if not used_delimeter and '/' in title_text:
+        #     title_text = self.split_title(title_text, SLASH_SPLITTER)
+        #     used_delimeter = True
 
         # split title with »
         if not used_delimeter and '»' in title_text:
@@ -758,6 +783,8 @@ class ContentExtractor(object):
 
         top_node_score = 0
         for e in parent_nodes:
+            if not self.parser.is_tag_visible(e):
+                continue
             score = self.get_score(e)
 
             if score > top_node_score:
@@ -804,6 +831,8 @@ class ContentExtractor(object):
         return b
 
     def add_siblings(self, top_node):
+        if self.is_articlebody(top_node):
+            return top_node
         baselinescore_siblings_para = self.get_siblings_score(top_node)
         results = self.walk_siblings(top_node)
         for current_node in results:
@@ -828,7 +857,7 @@ class ContentExtractor(object):
             potential_paragraphs = self.parser.getElementsByTag(
                 current_sibling, tag='p')
             if potential_paragraphs is None:
-                return None
+                return []
             else:
                 ps = []
                 for first_paragraph in potential_paragraphs:
@@ -944,6 +973,7 @@ class ContentExtractor(object):
         nodes_to_check = []
         for tag in ['p', 'pre', 'td']:
             items = self.parser.getElementsByTag(doc, tag=tag)
+            items = filter(lambda x: self.parser.is_tag_visible(x), items)
             nodes_to_check += items
         return nodes_to_check
 
