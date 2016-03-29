@@ -59,6 +59,8 @@ class Article(object):
 
         self.url = urls.prepare_url(url, self.source_url)
         self.long_url = url
+        # http://www.w3schools.com/tags/tag_base.asp
+        self.base_url = ''
 
         self.title = title
 
@@ -186,6 +188,9 @@ class Article(object):
         document_cleaner = DocumentCleaner(self.config)
         output_formatter = OutputFormatter(self.config)
 
+        base_url = self.extractor.get_base_url(self.url, self.clean_doc)
+        self.set_base_url(base_url)
+
         title = self.extractor.get_title(self.url, self.clean_doc)
         self.set_title(title)
 
@@ -312,17 +317,17 @@ class Article(object):
     def fetch_images(self):
         if self.clean_doc is not None:
             meta_img_url = self.extractor.get_meta_img_url(
-                self.url, self.clean_doc)
+                self.base_url, self.clean_doc)
             self.set_meta_img(meta_img_url)
 
-            imgs = self.extractor.get_img_urls(self.url, self.clean_doc)
+            imgs = self.extractor.get_img_urls(self.base_url, self.clean_doc)
             if self.meta_img:
                 imgs.add(self.meta_img)
             self.set_imgs(imgs)
 
         if self.clean_top_node is not None and not self.has_top_image():
             first_img = self.extractor.get_first_img_url(
-                self.url, self.clean_top_node)
+                self.base_url, self.clean_top_node)
             self.set_top_img(first_img)
 
         if not self.has_top_image():
@@ -456,6 +461,9 @@ class Article(object):
                 log.critical('jpeg error with PIL, %s' % e)
         except Exception as e:
             log.critical('jpeg error with PIL, %s' % e)
+
+    def set_base_url(self, base_url):
+        self.base_url = base_url
 
     def set_title(self, title):
         if self.title and not title:

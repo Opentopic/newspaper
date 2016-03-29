@@ -247,6 +247,20 @@ class ContentExtractor(object):
 
         return None
 
+    def get_base_url(self, article_url, doc):
+        """
+        Extracts base url for all links and media
+        :param article_url: url of the article (str)
+        :param doc:
+        :return:
+        """
+        kwargs = {'tag': 'base'}
+        base_element = self.parser.getElementsByTag(doc, **kwargs)
+        base_url = ''
+        if base_element:
+            base_url = self.parser.getAttribute(base_element[0], 'href')
+        return base_url or article_url
+
     def get_title(self, article_url, doc):
         """Fetch the article title and analyze it
         """
