@@ -544,24 +544,15 @@ class ContentExtractor(object):
             src = img_tag.get('src')
             if not src:
                 continue
-            print(img_tag.get('width'))
-            print(img_tag.get('height'))
-            if 'Keepcalm' in src:
-                print('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            if not has_min_dimension(img_tag.get('width', ''), thumbnail_size[0]) or \
-                    not has_min_dimension(img_tag.get('height', ''), thumbnail_size[1]):
-                print('NIE!!!!!')
+            if not has_min_dimension(img_tag.get('width', ''),
+                                     thumbnail_size[0]) or \
+                    not has_min_dimension(img_tag.get('height', ''),
+                                          thumbnail_size[1]):
                 continue
-            print('TAK!!!!!')
-
             urls.append(src)
 
         img_links = set([urllib.parse.urljoin(article_url, url)
                         for url in urls])
-
-
-
-
         return img_links
 
     def get_first_img_url(self, article_url, top_node):
