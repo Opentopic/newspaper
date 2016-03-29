@@ -3,6 +3,8 @@
 The following image extraction implementation was taken from an old
 copy of Reddit's source code.
 """
+import re
+
 __title__ = 'newspaper'
 __author__ = 'Lucas Ou-Yang'
 __license__ = 'MIT'
@@ -22,8 +24,8 @@ from . import urls
 log = logging.getLogger(__name__)
 
 chunk_size = 1024
-thumbnail_size = 90, 90
-minimal_area = 5000
+thumbnail_size = 168, 146
+minimal_area = 20000
 
 
 def image_to_str(image):
@@ -44,6 +46,15 @@ def prepare_image(image):
     image = square_image(image)
     image.thumbnail(thumbnail_size, Image.ANTIALIAS)
     return image
+
+
+def has_min_dimension(dim, min_dim):
+    dim = re.findall(r'\d+', dim)
+    if dim:
+        if int(dim[0]) >= min_dim:
+            return True
+        return False
+    return True
 
 
 def image_entropy(img):

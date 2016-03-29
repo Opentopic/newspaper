@@ -6,6 +6,8 @@ https://github.com/codelucas/newspaper/blob/master/GOOSE-LICENSE.txt
 Keep all html page extraction code within this file. Abstract any
 lxml or soup parsing code in the parsers.py file!
 """
+from newspaper.images import has_min_dimension, thumbnail_size
+
 __title__ = 'newspaper'
 __author__ = 'Lucas Ou-Yang'
 __license__ = 'MIT'
@@ -536,10 +538,30 @@ class ContentExtractor(object):
         """
         img_kwargs = {'tag': 'img'}
         img_tags = self.parser.getElementsByTag(doc, **img_kwargs)
-        urls = [img_tag.get('src')
-                for img_tag in img_tags if img_tag.get('src')]
+
+        urls = []
+        for img_tag in img_tags:
+            src = img_tag.get('src')
+            if not src:
+                continue
+            print(img_tag.get('width'))
+            print(img_tag.get('height'))
+            if 'Keepcalm' in src:
+                print('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            if not has_min_dimension(img_tag.get('width', ''), thumbnail_size[0]) or \
+                    not has_min_dimension(img_tag.get('height', ''), thumbnail_size[1]):
+                print('NIE!!!!!')
+                continue
+            print('TAK!!!!!')
+
+            urls.append(src)
+
         img_links = set([urllib.parse.urljoin(article_url, url)
                         for url in urls])
+
+
+
+
         return img_links
 
     def get_first_img_url(self, article_url, top_node):
