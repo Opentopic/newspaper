@@ -56,6 +56,7 @@ class OutputFormatter(object):
             'remove_empty_tags',
             'remove_trailing_media_div',
             'remove_fewwords_paragraphs',
+            'remove_twitter_media_widgets',
         ]
 
         if 'remove_negativescores_nodes' not in excluded_formatters:
@@ -204,3 +205,8 @@ class OutputFormatter(object):
                 trimmed = self.parser.getText(el)
                 if trimmed.startswith("(") and trimmed.endswith(")"):
                     self.parser.remove(el)
+
+    def remove_twitter_media_widgets(self):
+        nodes = self.parser.css_select(self.top_node, '*[class^="twitter-"]')
+        for node in nodes:
+            self.parser.remove(node)
