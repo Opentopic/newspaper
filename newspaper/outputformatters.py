@@ -38,27 +38,40 @@ class OutputFormatter(object):
     def get_top_node(self):
         return self.top_node
 
-    def get_formatted(self, top_node):
+    def get_formatted(self, top_node, excluded_formatters=None):
         """Returns the body text of an article, and also the body article
         html if specified. Returns in (text, html) form
         """
         self.top_node = top_node
         html, text = '', ''
 
-        self.remove_negativescores_nodes()
+        if excluded_formatters is None:
+            excluded_formatters = []
+
+        _formatters = [
+            'links_to_text',
+            'add_newline_to_br',
+            'add_newline_to_li',
+            'replace_with_text',
+            'remove_empty_tags',
+            'remove_trailing_media_div',
+            'remove_fewwords_paragraphs',
+        ]
+
+        if 'remove_negativescores_nodes' not in excluded_formatters:
+            self.remove_negativescores_nodes()
 
         if self.config.keep_article_html:
             html = self.convert_to_html()
 
-        self.links_to_text()
-        self.add_newline_to_br()
-        self.add_newline_to_li()
-        self.replace_with_text()
-        self.remove_empty_tags()
-        self.remove_trailing_media_div()
-        self.remove_fewwords_paragraphs()
+        for formatter in _formatters:
+            if formatter in excluded_formatters:
+                continue
+
+            if hasattr(self, formatter):
+                getattr(self, formatter)()
+
         text = self.convert_to_text()
-        # print(self.parser.nodeToString(self.get_top_node()))
         return text, html
 
     def convert_to_text(self):

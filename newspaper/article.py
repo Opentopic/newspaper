@@ -48,6 +48,8 @@ class Article(object):
 
         self.extractor = ContentExtractor(self.config)
 
+        self.excluded_formatters = []
+
         if source_url == '':
             source_url = urls.get_scheme(url) + '://' + urls.get_domain(url)
 
@@ -249,7 +251,7 @@ class Article(object):
             self.clean_top_node = copy.deepcopy(self.top_node)
 
             text, article_html = output_formatter.get_formatted(
-                self.top_node)
+                self.top_node, self.excluded_formatters)
             self.set_article_html(article_html)
             self.set_text(text)
 
