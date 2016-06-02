@@ -148,8 +148,9 @@ class Article(object):
         Don't normally call this method b/c it's good to multithread articles
         on a source (newspaper) level.
         """
-        log.info('Url: {} starting to download'.format(self.url))
-        self.download()
+        if not self.is_downloaded:
+            log.info('Url: {} starting to download'.format(self.url))
+            self.download()
         log.info('Url: {} starting to parse'.format(self.url))
         self.parse()
         log.info('Url: {} starting to nlp'.format(self.url))
@@ -267,11 +268,11 @@ class Article(object):
         It uses a stopwords based approach, counting how many unique stopwords
         are seen in analyzed text.
 
-        @param text: Text whose language want to be detected
-        @type text: str
+        :param text: Text whose language want to be detected
+        :type text: str
 
-        @return: Most scored language guessed
-        @rtype: str
+        :return: Most scored language guessed
+        :rtype: str
         """
         if not self.is_downloaded or not self.is_parsed:
             raise ArticleException(
@@ -292,11 +293,11 @@ class Article(object):
         Calculate probability of given text to be written in several languages and
         return a dictionary that looks like {'french': 2, 'spanish': 4, 'english': 0}
 
-        @param text: Text whose language want to be detected
-        @type text: str
+        :param text: Text whose language want to be detected
+        :type text: str
 
-        @return: Dictionary with languages and unique stopwords seen in analyzed text
-        @rtype: dict
+        :return: Dictionary with languages and unique stopwords seen in analyzed text
+        :rtype: dict
         """
 
         languages_ratios = {}
