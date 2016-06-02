@@ -25,6 +25,19 @@ class OutputFormatter(object):
         self.language = config.language
         self.stopwords_class = config.stopwords_class
 
+        self.excluded_formatters = []
+        self.formatters = [
+            'links_to_text',
+            'add_newline_to_br',
+            'add_newline_to_li',
+            'replace_with_text',
+            'remove_empty_tags',
+            'remove_trailing_media_div',
+            'remove_fewwords_paragraphs',
+            'remove_twitter_media_widgets',
+            'remove_figcaption_tags',
+        ]
+
     def update_language(self, meta_lang):
         '''Required to be called before the extraction process in some
         cases because the stopwords_class has to set incase the lang
@@ -45,20 +58,20 @@ class OutputFormatter(object):
         self.top_node = top_node
         html, text = '', ''
 
-        self.remove_negativescores_nodes()
+        if 'remove_negativescores_nodes' not in self.excluded_formatters:
+            self.remove_negativescores_nodes()
 
         if self.config.keep_article_html:
             html = self.convert_to_html()
 
-        self.links_to_text()
-        self.add_newline_to_br()
-        self.add_newline_to_li()
-        self.replace_with_text()
-        self.remove_empty_tags()
-        self.remove_trailing_media_div()
-        self.remove_fewwords_paragraphs()
+        for formatter in self.formatters:
+            if formatter in self.excluded_formatters:
+                continue
+
+            if hasattr(self, formatter):
+                getattr(self, formatter)()
+
         text = self.convert_to_text()
-        # print(self.parser.nodeToString(self.get_top_node()))
         return text, html
 
     def convert_to_text(self):
@@ -191,3 +204,13 @@ class OutputFormatter(object):
                 trimmed = self.parser.getText(el)
                 if trimmed.startswith("(") and trimmed.endswith(")"):
                     self.parser.remove(el)
+
+    def remove_twitter_media_widgets(self):
+        nodes = self.parser.css_select(self.top_node, '*[class^="twitter-"]')
+        for node in nodes:
+            self.parser.remove(node)
+
+    def remove_figcaption_tags(self):
+        all_nodes = self.parser.getElementsByTag(self.get_top_node(), 'figcaption')
+        for node in all_nodes:
+            self.parser.remove(node)

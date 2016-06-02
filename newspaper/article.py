@@ -48,6 +48,9 @@ class Article(object):
 
         self.extractor = ContentExtractor(self.config)
 
+        self.document_cleaner = DocumentCleaner(self.config)
+        self.output_formatter = OutputFormatter(self.config)
+
         if source_url == '':
             source_url = urls.get_scheme(url) + '://' + urls.get_domain(url)
 
@@ -185,9 +188,6 @@ class Article(object):
         parse_candidate = self.get_parse_candidate()
         self.link_hash = parse_candidate.link_hash  # MD5
 
-        document_cleaner = DocumentCleaner(self.config)
-        output_formatter = OutputFormatter(self.config)
-
         base_url = self.extractor.get_base_url(self.url, self.clean_doc)
         self.set_base_url(base_url)
 
@@ -202,7 +202,7 @@ class Article(object):
 
         if self.config.use_meta_language:
             self.extractor.update_language(self.meta_lang)
-            output_formatter.update_language(self.meta_lang)
+            self.output_formatter.update_language(self.meta_lang)
 
         meta_favicon = self.extractor.get_favicon(self.url, self.clean_doc)
         self.set_meta_favicon(meta_favicon)
@@ -237,7 +237,7 @@ class Article(object):
             self.doc = article_body
 
         # Before any computations on the body, clean DOM object
-        self.doc = document_cleaner.clean(self.doc)
+        self.doc = self.document_cleaner.clean(self.doc)
 
         text = ''
         self.top_node = self.extractor.calculate_best_node(self.doc)
@@ -248,7 +248,7 @@ class Article(object):
             self.top_node = self.extractor.post_cleanup(self.top_node)
             self.clean_top_node = copy.deepcopy(self.top_node)
 
-            text, article_html = output_formatter.get_formatted(
+            text, article_html = self.output_formatter.get_formatted(
                 self.top_node)
             self.set_article_html(article_html)
             self.set_text(text)
