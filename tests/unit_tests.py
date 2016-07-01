@@ -2,7 +2,6 @@
 """
 All unit tests for the newspaper library should be contained in this file.
 """
-import logging
 import sys
 import os
 import unittest
@@ -19,13 +18,12 @@ PARENT_DIR = os.path.join(TEST_DIR, '..')
 # core module
 sys.path.insert(0, PARENT_DIR)
 
-TEXT_FN = os.path.join(TEST_DIR, 'data/text')
-HTML_FN = os.path.join(TEST_DIR, 'data/html')
-URLS_FILE = os.path.join(TEST_DIR, 'data/fulltext_url_list.txt')
+TEXT_FN = os.path.join(TEST_DIR, 'data', 'text')
+HTML_FN = os.path.join(TEST_DIR, 'data', 'html')
+URLS_FILE = os.path.join(TEST_DIR, 'data', 'fulltext_url_list.txt')
 
 import newspaper
-from newspaper import (
-    Article, fulltext, Source, ArticleException, news_pool)
+from newspaper import Article, fulltext, Source, ArticleException, news_pool
 from newspaper.configuration import Configuration
 from newspaper.urls import get_domain
 
@@ -79,6 +77,7 @@ def check_url(*args, **kwargs):
     return ExhaustiveFullTextCase.check_url(*args, **kwargs)
 
 
+@unittest.skipIf('fulltext' not in sys.argv, 'Skipping fulltext tests')
 class ExhaustiveFullTextCase(unittest.TestCase):
     @staticmethod
     def check_url(args):
@@ -178,6 +177,30 @@ class ArticleTestCase(unittest.TestCase):
         html = mock_resource_with('cnn_article', 'html')
         self.article.download(html)
         self.assertEqual(75406, len(self.article.html))
+
+    @print_test
+    def test_meta_refresh_redirect(self):
+        # TODO: We actually hit example.com in this unit test ... which is bad
+        # Figure out how to mock an actual redirect
+        config = Configuration()
+        config.follow_meta_refresh = True
+        article = Article(
+            '', config=config)
+        html = mock_resource_with('google_meta_refresh', 'html')
+        article.download(html=html)
+        article.parse()
+        self.assertEqual(article.title, 'Example Domain')
+
+    @print_test
+    def test_meta_refresh_no_url_redirect(self):
+        config = Configuration()
+        config.follow_meta_refresh = True
+        article = Article(
+            '', config=config)
+        html = mock_resource_with('ap_meta_refresh', 'html')
+        article.download(html=html)
+        article.parse()
+        self.assertEqual(article.title, 'News from The Associated Press')
 
     @print_test
     def test_pre_download_parse(self):
@@ -296,6 +319,35 @@ class ArticleTestCase(unittest.TestCase):
         SUMMARY = mock_resource_with('cnn_summary', 'txt')
         self.assertEqual(SUMMARY, self.article.summary)
         self.assertCountEqual(KEYWORDS, self.article.keywords)
+
+
+class ContentExtractorTestCase(unittest.TestCase):
+    """Test specific element extraction cases"""
+
+    def setUp(self):
+        self.extractor = newspaper.extractors.ContentExtractor(Configuration())
+        self.parser = newspaper.parsers.Parser
+
+    def _get_title(self, html):
+        doc = self.parser.fromstring(html)
+        return self.extractor.get_title(doc)
+
+    def test_get_title_basic(self):
+        html = '<title>Test title</title>'
+        self.assertEqual(self._get_title(html), 'Test title')
+
+    def test_get_title_split(self):
+        html = '<title>Test page » Test title</title>'
+        self.assertEqual(self._get_title(html), 'Test title')
+
+    def test_get_title_split_escaped(self):
+        html = '<title>Test page &raquo; Test title</title>'
+        self.assertEqual(self._get_title(html), 'Test title')
+
+    def test_get_title_quotes(self):
+        title = 'Test page and «something in quotes»'
+        html = '<title>{}</title>'.format(title)
+        self.assertEqual(self._get_title(html), title)
 
 
 class SourceTestCase(unittest.TestCase):
@@ -497,7 +549,7 @@ class MultiLanguageTestCase(unittest.TestCase):
         article.parse()
         text = mock_resource_with('chinese', 'txt')
         self.assertEqual(text, article.text)
-        self.assertEqual(text,  fulltext(article.html, 'zh'))
+        self.assertEqual(text, fulltext(article.html, 'zh'))
 
     @print_test
     def test_arabic_fulltext_extract(self):
@@ -526,4 +578,8 @@ class MultiLanguageTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=0)
+    argv = list(sys.argv)
+    if 'fulltext' in argv:
+        argv.remove('fulltext')  # remove it here, so it doesn't pass to unittest
+
+    unittest.main(verbosity=0, argv=argv)
