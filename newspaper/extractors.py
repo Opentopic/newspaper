@@ -367,7 +367,7 @@ class ContentExtractor(object):
         #     used_delimeter = True
 
         # split title with »
-        if not used_delimeter and '»' in title_text:
+        if not used_delimeter and ' » ' in title_text:
             title_text = self.split_title(title_text, ARROWS_SPLITTER, title_text_h1)
             used_delimeter = True
 
