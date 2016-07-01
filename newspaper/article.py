@@ -69,6 +69,8 @@ class Article(object):
 
         # URL of the "best image" to represent this article
         self.top_img = self.top_image = ''
+        self.top_image_width = self.top_image_height = None
+        self.top_image_hash = None
 
         # stores image provided by metadata
         self.meta_img = ''
@@ -261,7 +263,7 @@ class Article(object):
             self.set_text(text)
 
         if self.config.fetch_images:
-            self.fetch_images()
+            self.fetch_images(self.config.fetch_top_image_hash)
 
         self.is_parsed = True
         self.release_resources()
@@ -321,7 +323,7 @@ class Article(object):
 
         return languages_ratios
 
-    def fetch_images(self):
+    def fetch_images(self, fetch_hash=False):
         if self.clean_doc is not None:
             meta_img_url = self.extractor.get_meta_img_url(
                 self.base_url, self.clean_doc)
@@ -335,10 +337,10 @@ class Article(object):
         if self.clean_top_node is not None and not self.has_top_image():
             first_img = self.extractor.get_first_img_url(
                 self.base_url, self.clean_top_node)
-            self.set_top_img(first_img)
+            self.set_top_img(first_img, fetch_hash)
 
         if not self.has_top_image():
-            self.set_reddit_top_img()
+            self.set_reddit_top_img(fetch_hash)
 
     def has_top_image(self):
         return self.top_img is not None and self.top_img != ''
@@ -454,13 +456,16 @@ class Article(object):
                 pass
         # os.remove(path)
 
-    def set_reddit_top_img(self):
+    def set_reddit_top_img(self, fetch_image_hash=False):
         """Wrapper for setting images. Queries known image attributes
         first, then uses Reddit's image algorithm as a fallback.
         """
         try:
             s = images.Scraper(self)
-            self.set_top_img(s.largest_image_url())
+            src_url = s.largest_image_url()
+            if src_url is not None and s.satisfies_requirements(src_url):
+                phash = s.phash(src_url) if fetch_image_hash else None
+                self.set_top_img_no_check(src_url, s.dimensions, phash)
         except TypeError as e:
             if "Can't convert 'NoneType' object to str implicitly" in e.args[0]:
                 log.debug("No pictures found. Top image not set, %s" % e)
@@ -507,18 +512,24 @@ class Article(object):
         self.meta_img = src_url
         self.set_top_img_no_check(src_url)
 
-    def set_top_img(self, src_url):
-        if src_url is not None:
-            s = images.Scraper(self)
-            if s.satisfies_requirements(src_url):
-                self.set_top_img_no_check(src_url)
+    def set_top_img(self, src_url, fetch_image_hash=False):
+        if src_url is None:
+            return
+        s = images.Scraper(self)
+        if s.satisfies_requirements(src_url):
+            phash = s.phash(src_url) if fetch_image_hash else None
+            self.set_top_img_no_check(src_url, s.dimensions(src_url), phash)
 
-    def set_top_img_no_check(self, src_url):
+    def set_top_img_no_check(self, src_url, dimensions=None, phash=None):
         """Provide 2 APIs for images. One at "top_img", "imgs"
         and one at "top_image", "images"
         """
         self.top_img = src_url
         self.top_image = src_url
+        if dimensions is not None:
+            self.top_image_width, self.top_image_height = dimensions
+        if phash is not None:
+            self.top_image_hash = phash
 
     def set_imgs(self, imgs):
         """The motive for this method is the same as above, provide APIs

@@ -330,7 +330,7 @@ class ContentExtractorTestCase(unittest.TestCase):
 
     def _get_title(self, html):
         doc = self.parser.fromstring(html)
-        return self.extractor.get_title(doc)
+        return self.extractor.get_title('', doc)
 
     def test_get_title_basic(self):
         html = '<title>Test title</title>'

@@ -44,6 +44,8 @@ class Configuration(object):
 
         # Set this to false if you don't care about getting images
         self.fetch_images = True
+        # Setting this to true will fetch whole image to calculate a perceptual hash
+        self.fetch_top_image_hash = False
         self.image_dimension_ration = 16 / 9.0
 
         # Follow meta refresh redirect when downloading
@@ -73,7 +75,7 @@ class Configuration(object):
         self.thread_timeout_seconds = 1
 
         # strategy for network.get_html()
-        self.content_strategy = 'requests'
+        self.content_strategy = {'name': 'requests', 'kwargs': {}}
 
         self.video_detect_provider = False
 
