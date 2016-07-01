@@ -26,7 +26,7 @@ from .configuration import Configuration
 from .extractors import ContentExtractor
 from .outputformatters import OutputFormatter
 from .utils import (URLHelper, RawHelper, extend_config,
-                    get_available_languages)
+                    get_available_languages, extract_meta_refresh)
 from .videos.extractors import VideoExtractor
 
 log = logging.getLogger()
@@ -168,6 +168,12 @@ class Article(object):
         """
         if html is None:
             html = network.get_html(self.url, self.config)
+
+        if self.config.follow_meta_refresh:
+            meta_refresh_url = extract_meta_refresh(html)
+            if meta_refresh_url:
+                return self.download(html=network.get_html(meta_refresh_url))
+
         self.set_html(html)
 
         if title is not None:
@@ -450,7 +456,7 @@ class Article(object):
 
     def set_reddit_top_img(self):
         """Wrapper for setting images. Queries known image attributes
-        first, then uses Reddit's imgage algorithm as a fallback.
+        first, then uses Reddit's image algorithm as a fallback.
         """
         try:
             s = images.Scraper(self)
@@ -458,10 +464,12 @@ class Article(object):
         except TypeError as e:
             if "Can't convert 'NoneType' object to str implicitly" in e.args[0]:
                 log.debug("No pictures found. Top image not set, %s" % e)
+            elif "timed out" in e.args[0]:
+                log.debug("Download of picture timed out. Top image not set, %s" % e)
             else:
-                log.critical('jpeg error with PIL, %s' % e)
+                log.critical('TypeError other than None type error. Cannot set top image using the Reddit algorithm. Possible error with PIL., %s' % e)
         except Exception as e:
-            log.critical('jpeg error with PIL, %s' % e)
+            log.critical('Other error with setting top image using the Reddit algorithm. Possible error with PIL, %s' % e)
 
     def set_base_url(self, base_url):
         self.base_url = base_url
