@@ -238,8 +238,18 @@ class Scraper:
         if img_url not in self._fetched or 'dimensions' not in self._fetched[img_url]:
             if img_url not in self._fetched:
                 self._fetched[img_url] = {}
-            self._fetched[img_url]['dimensions'] = fetch_image_dimension(
-                img_url, self.useragent, referer=self.url)
+            if 'image' in self._fetched[img_url]:
+                content_type, image_str = self._fetched[img_url]['image']
+                if image_str:
+                    image = str_to_image(image_str)
+                    dimensions = p.size
+                else:
+                    dimensions = (None, None)
+            else:
+                dimensions = fetch_image_dimension(
+                    img_url, self.useragent, referer=self.url)
+
+            self._fetched[img_url]['dimensions'] = dimensions
         return self._fetched[img_url]['dimensions']
 
     def image(self, img_url):
