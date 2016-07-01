@@ -187,6 +187,7 @@ class Scraper:
         self.top_img = article.top_img
         self.config = article.config
         self.useragent = self.config.browser_user_agent
+        self._fetched = {}
 
     def largest_image_url(self):
         # TODO: remove. it is not responsibility of Scrapper
@@ -198,9 +199,7 @@ class Scraper:
         max_area = 0
         max_url = None
         for img_url in self.imgs:
-            dimension = fetch_image_dimension(
-                img_url, self.useragent, referer=self.url)
-            area = self.calculate_area(img_url, dimension)
+            area = self.calculate_area(img_url, self.dimensions(img_url))
             if area > max_area:
                 max_area = area
                 max_url = img_url
@@ -232,23 +231,51 @@ class Scraper:
         return area
 
     def satisfies_requirements(self, img_url):
-        dimension = fetch_image_dimension(
-            img_url, self.useragent, referer=self.url)
-        area = self.calculate_area(img_url, dimension)
+        area = self.calculate_area(img_url, self.dimensions(img_url))
         return area > minimal_area
+
+    def dimensions(self, img_url):
+        if img_url not in self._fetched or 'dimensions' not in self._fetched[img_url]:
+            if img_url not in self._fetched:
+                self._fetched[img_url] = {}
+            self._fetched[img_url]['dimensions'] = fetch_image_dimension(
+                img_url, self.useragent, referer=self.url)
+        return self._fetched[img_url]['dimensions']
+
+    def image(self, img_url):
+        if img_url not in self._fetched or 'image' not in self._fetched[img_url]:
+            if img_url not in self._fetched:
+                self._fetched[img_url] = {}
+            self._fetched[img_url]['image'] = fetch_url(img_url, self.useragent,
+                                                        referer=self.url)
+        return self._fetched[img_url]['image']
+
+    def phash(self, img_url):
+        if img_url not in self._fetched or 'phash' not in self._fetched[img_url]:
+            if img_url not in self._fetched:
+                self._fetched[img_url] = {}
+            content_type, image_str = self.image(img_url)
+            if image_str:
+                image = str_to_image(image_str)
+                import imagehash
+                self._fetched[img_url]['phash'] = imagehash.phash(image)
+            else:
+                self._fetched[img_url]['phash'] = None
+        return self._fetched[img_url]['phash']
 
     def thumbnail(self):
         """Identifies top image, trims out a thumbnail and also has a url
         """
         image_url = self.largest_image_url()
-        if image_url:
-            content_type, image_str = fetch_url(image_url, referer=self.url)
-            if image_str:
-                image = str_to_image(image_str)
-                try:
-                    image = prepare_image(image)
-                except IOError as e:
-                    if 'interlaced' in e.message:
-                        return None
-                return image, image_url
-        return None, None
+        if not image_url:
+            return None, None
+        content_type, image_str = self.image(image_url)
+        if not image_str:
+            return None, None
+        image = str_to_image(image_str)
+        try:
+            image = prepare_image(image)
+        except IOError as e:
+            if 'interlaced' in e.message:
+                return None, None
+        return image, image_url
