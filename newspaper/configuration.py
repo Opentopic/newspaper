@@ -75,7 +75,7 @@ class Configuration(object):
         self.thread_timeout_seconds = 1
 
         # strategy for network.get_html()
-        self.content_strategy = 'requests'
+        self.content_strategy = {'name': 'requests', 'kwargs': {}}
 
         self.video_detect_provider = False
 
