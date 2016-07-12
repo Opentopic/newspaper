@@ -36,7 +36,7 @@ def image_to_str(image):
 
 
 def str_to_image(s):
-    s = io.StringIO(s)
+    s = io.StringIO(s) if isinstance(s, str) else io.BytesIO(s)
     s.seek(0)
     image = Image.open(s)
     return image
@@ -242,7 +242,7 @@ class Scraper:
                 content_type, image_str = self._fetched[img_url]['image']
                 if image_str:
                     image = str_to_image(image_str)
-                    dimensions = p.size
+                    dimensions = image.size
                 else:
                     dimensions = (None, None)
             else:
