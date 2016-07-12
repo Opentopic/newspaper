@@ -14,6 +14,7 @@ REQUIRED_CORPORA = [
     'stopwords'
 ]
 
+
 def main():
     for each in REQUIRED_CORPORA:
         print(('Downloading "{0}"'.format(each)))
