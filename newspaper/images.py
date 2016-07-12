@@ -268,7 +268,7 @@ class Scraper:
             if image_str:
                 image = str_to_image(image_str)
                 import imagehash
-                self._fetched[img_url]['phash'] = imagehash.phash(image)
+                self._fetched[img_url]['phash'] = str(imagehash.phash(image))
             else:
                 self._fetched[img_url]['phash'] = None
         return self._fetched[img_url]['phash']
