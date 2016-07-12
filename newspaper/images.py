@@ -96,10 +96,9 @@ def clean_url(url):
 
 def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
     cur_try = 0
-    nothing = None if dimension else (None, None)
     url = clean_url(url)
     if not url.startswith(('http://', 'https://')):
-        return nothing
+        return None, None
 
     response = None
     while True:
@@ -119,7 +118,7 @@ def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
             content_type = response.headers.get('Content-Type')
 
             if not content_type:
-                return nothing
+                return None, None
 
             if 'image' in content_type or \
                     content_type == 'application/octet-stream':
@@ -150,24 +149,24 @@ def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
                     content += new_data
 
                 if p is None:
-                    return nothing
+                    return None, None
                 # return the size, or return the data
                 if dimension and p.image:
                     return p.image.size
                 elif dimension:
-                    return nothing
+                    return None, None
             elif dimension:
                 # expected an image, but didn't get one
-                return nothing
+                return None, None
 
             return content_type, content
 
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             cur_try += 1
             if cur_try >= retries:
                 log.debug('error while fetching: %s refer: %s' %
                           (url, referer))
-                return nothing
+                return None, None
         finally:
             if response is not None:
                 response.raw.close()

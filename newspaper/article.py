@@ -465,7 +465,7 @@ class Article(object):
             src_url = s.largest_image_url()
             if src_url is not None and s.satisfies_requirements(src_url):
                 phash = s.phash(src_url) if fetch_image_hash else None
-                self.set_top_img_no_check(src_url, s.dimensions, phash)
+                self.set_top_img_no_check(src_url, s.dimensions(src_url), phash)
         except TypeError as e:
             if "Can't convert 'NoneType' object to str implicitly" in e.args[0]:
                 log.debug("No pictures found. Top image not set, %s" % e)
