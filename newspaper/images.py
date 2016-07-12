@@ -206,7 +206,18 @@ class Scraper:
         return max_url
 
     def calculate_area(self, img_url, dimension):
-        if not dimension:
+        """
+
+        :param img_url:
+        :type img_url: str
+
+        :param dimension: width and height
+        :type dimension: tuple
+
+        :return: area
+        :rtype: float
+        """
+        if not dimension or len(dimension) != 2 or dimension[0] is None or dimension[1] is None:
             return 0
         area = dimension[0] * dimension[1]
         # Ignore tiny images
