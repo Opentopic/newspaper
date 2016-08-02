@@ -5,6 +5,7 @@ must be abstracted in this file.
 """
 import os
 import subprocess
+from contextlib import closing
 from urllib.parse import urljoin
 
 from . import CASPERJS_PATH
@@ -48,6 +49,8 @@ def get_html(url, config=None, response=None):
     config = config or Configuration()
     useragent = config.browser_user_agent
     timeout = config.request_timeout
+    size_limit = config.size_limit
+    invalid_types = config.invalid_content_types
 
     if response is not None:
         if response.encoding != FAIL_ENCODING:
@@ -55,13 +58,25 @@ def get_html(url, config=None, response=None):
         return response.content
 
     def _get_using_requests():
-        s = requests.Session()
-        _response = s.get(
-            url=url, **get_request_kwargs(timeout, useragent))
-        log.info('Url: {} got response from Requests'.format(url))
-        if _response.encoding != FAIL_ENCODING:
-            return _response.text or ''
-        return _response.content or ''
+        result = None
+        with closing(requests.get(url=url, stream=True, **get_request_kwargs(timeout, useragent))) as _response:
+            length = _response.headers.get('content-length')
+            type = _response.headers.get('content-type')
+            if length is not None and int(length) >= size_limit:
+                log.warning('Requests response is too big, aborting', extra={
+                    'url': url,
+                    'length': length,
+                })
+            elif type is not None and any(filter(lambda x: type.startswith(x[:-1]) if x[-1] == '*' else type == x,
+                                                 invalid_types)):
+                log.warning('Requests response has invalid content type, aborting', extra={
+                    'url': url,
+                    'content_type': type,
+                })
+            else:
+                log.info('Url: {} got response from Requests'.format(url))
+                result = _response.text if _response.encoding != FAIL_ENCODING else _response.content
+        return result or ''
 
     if config.content_strategy['name'] == 'casperjs':
         command_formula = '{casperjs} {script} {url}'

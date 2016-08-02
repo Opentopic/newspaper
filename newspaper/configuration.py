@@ -74,8 +74,10 @@ class Configuration(object):
 
         self.thread_timeout_seconds = 1
 
-        # strategy for network.get_html()
+        # strategy, size limit and invalid mimetypes for network.get_html()
         self.content_strategy = {'name': 'requests', 'kwargs': {}}
+        self.size_limit = 1048576
+        self.invalid_content_types = ['audio/*', 'video/*', 'image/*', 'application/octet-stream', 'application/pdf']
 
         self.video_detect_provider = False
 
