@@ -76,7 +76,7 @@ class Configuration(object):
 
         # strategy, size limit and invalid mimetypes for network.get_html()
         self.content_strategy = {'name': 'requests', 'kwargs': {}}
-        self.size_limit = 1048576
+        self.size_limit = 5242880
         self.invalid_content_types = ['audio/*', 'video/*', 'image/*', 'application/octet-stream', 'application/pdf']
 
         self.video_detect_provider = False
