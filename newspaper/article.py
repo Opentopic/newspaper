@@ -8,6 +8,7 @@ import logging
 import copy
 import os
 import glob
+from bs4 import BeautifulSoup
 
 try:
     from nltk import wordpunct_tokenize
@@ -290,6 +291,7 @@ class Article(object):
         if text is None:
             text = self.text
 
+        text = BeautifulSoup(text, "html.parser").get_text()
         ratios = self._calculate_languages_ratios(text)
 
         most_rated_language = max(ratios, key=ratios.get)
