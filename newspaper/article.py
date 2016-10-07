@@ -316,8 +316,8 @@ class Article(object):
         words = [word.lower() for word in tokens]
 
         # Compute per language included in nltk number of unique stopwords appearing in analyzed text
-        for language in swadesh.fileids():
-            stopwords_set = set(swadesh.words(language))
+        for language in stopwords.fileids():
+            stopwords_set = set(stopwords.words(language))
             words_set = set(words)
             common_elements = words_set.intersection(stopwords_set)
 
