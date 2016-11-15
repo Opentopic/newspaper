@@ -60,6 +60,9 @@ def get_html(url, config=None, response=None):
     def _get_using_requests():
         result = None
         with closing(requests.get(url=url, stream=True, **get_request_kwargs(timeout, useragent))) as _response:
+            response_code = _response.status_code
+            if not (200 <= response_code <= 299):
+                raise Exception('Invalid status code: {}'.format(response_code))
             length = _response.headers.get('content-length')
             type = _response.headers.get('content-type')
             if length is not None and int(length) >= size_limit:
@@ -91,6 +94,10 @@ def get_html(url, config=None, response=None):
                 command.split(), stdout=subprocess.PIPE,
                 stdin=subprocess.PIPE, stderr=subprocess.PIPE)
             output, err = p.communicate(timeout=timeout)
+            response_code_part = str(output).split('\\n')[0]
+            response_code = int(''.join(filter(lambda x: x.isdigit(), response_code_part)))
+            if not (200 <= response_code <= 299):
+                raise Exception('Invalid status code: {}'.format(response_code))
             log.info('Url: {} got response from CasperJS'.format(url))
         except subprocess.TimeoutExpired as e:
             log.info('Url: {} got timeout from CasperJS'.format(url))
@@ -110,6 +117,7 @@ def get_html(url, config=None, response=None):
                 log_file=log_file))
             browser.get(url)
             log.info('Url: {} got response from Selenium'.format(url))
+            # webdriver does not support returning HTTP status code
             html = browser.page_source
             browser.quit()
             del browser
@@ -127,6 +135,9 @@ def get_html(url, config=None, response=None):
         endpoint = urljoin(
             config.content_strategy['kwargs']['host'], '/render.html')
         resp = requests.get(endpoint, params=payload)
+        response_code = resp.status_code
+        if not (200 <= response_code <= 299):
+            raise Exception('Invalid status code: {}'.format(response_code))
         log.info('Url: {} got response from Splash'.format(url))
         return resp.content
 
