@@ -414,7 +414,7 @@ class ContentExtractor(object):
         return TITLE_REPLACEMENTS.replaceAll(title).strip()
 
     def check_if_host_in_title(self, article_url, title, splitter):
-        hostname = urllib.parse.urlparse(article_url).hostname.lower()
+        hostname = urlparse(article_url).hostname.lower()
         hostnames = [hostname]
         if 'www' in hostname:
             hostnames.append(hostname.replace('www.', ''))
