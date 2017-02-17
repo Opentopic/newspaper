@@ -6,6 +6,8 @@ copy of Reddit's source code.
 import re
 from http.client import HTTPException
 
+from requests.packages.urllib3.exceptions import HTTPError
+
 __title__ = 'newspaper'
 __author__ = 'Lucas Ou-Yang'
 __license__ = 'MIT'
@@ -162,7 +164,7 @@ def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
 
             return content_type, content
 
-        except (requests.exceptions.RequestException, ConnectionResetError, ConnectionError, HTTPException):
+        except (requests.exceptions.RequestException, ConnectionResetError, ConnectionError, HTTPException, HTTPError):
             cur_try += 1
             if cur_try >= retries:
                 log.debug('error while fetching: %s refer: %s' %
