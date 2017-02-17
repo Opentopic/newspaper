@@ -283,9 +283,9 @@ class Scraper:
             self._fetched[img_url]['phash'] = None
             return self._fetched[img_url]['phash']
 
-        image = str_to_image(image_str)
         import imagehash
         try:
+            image = str_to_image(image_str)
             self._fetched[img_url]['phash'] = str(imagehash.phash(image))
         except OSError:
             # downloaded image might be invalid, we can't do nothing about it so just assume there's no hash
