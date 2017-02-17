@@ -330,9 +330,8 @@ class Article(object):
 
     def fetch_images(self, fetch_hash=False):
         if self.clean_doc is not None:
-            meta_img_url = self.extractor.get_meta_img_url(
-                self.base_url, self.clean_doc)
-            self.set_meta_img(meta_img_url)
+            meta_img_url = self.extractor.get_meta_img_url(self.base_url, self.clean_doc)
+            self.set_meta_img(meta_img_url, fetch_hash)
 
             imgs = self.extractor.get_img_urls(self.base_url, self.clean_doc)
             if self.meta_img:
@@ -515,9 +514,9 @@ class Article(object):
         if article_html:
             self.article_html = article_html
 
-    def set_meta_img(self, src_url):
+    def set_meta_img(self, src_url, fetch_image_hash=False):
         self.meta_img = src_url
-        self.set_top_img_no_check(src_url)
+        self.set_top_img(src_url, fetch_image_hash)
 
     def set_top_img(self, src_url, fetch_image_hash=False):
         if src_url is None:
