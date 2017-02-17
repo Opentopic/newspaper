@@ -4,6 +4,7 @@ The following image extraction implementation was taken from an old
 copy of Reddit's source code.
 """
 import re
+from http.client import HTTPException
 
 __title__ = 'newspaper'
 __author__ = 'Lucas Ou-Yang'
@@ -161,7 +162,7 @@ def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
 
             return content_type, content
 
-        except requests.exceptions.RequestException:
+        except (requests.exceptions.RequestException, ConnectionResetError, ConnectionError, HTTPException):
             cur_try += 1
             if cur_try >= retries:
                 log.debug('error while fetching: %s refer: %s' %
@@ -271,16 +272,22 @@ class Scraper:
         return self._fetched[img_url]['image']
 
     def phash(self, img_url):
-        if img_url not in self._fetched or 'phash' not in self._fetched[img_url]:
-            if img_url not in self._fetched:
-                self._fetched[img_url] = {}
-            content_type, image_str = self.image(img_url)
-            if image_str:
-                image = str_to_image(image_str)
-                import imagehash
-                self._fetched[img_url]['phash'] = str(imagehash.phash(image))
-            else:
-                self._fetched[img_url]['phash'] = None
+        if img_url in self._fetched and 'phash' in self._fetched[img_url]:
+            return self._fetched[img_url]['phash']
+        if img_url not in self._fetched:
+            self._fetched[img_url] = {}
+        content_type, image_str = self.image(img_url)
+        if not image_str:
+            self._fetched[img_url]['phash'] = None
+            return self._fetched[img_url]['phash']
+
+        image = str_to_image(image_str)
+        import imagehash
+        try:
+            self._fetched[img_url]['phash'] = str(imagehash.phash(image))
+        except OSError:
+            # downloaded image might be invalid, we can't do nothing about it so just assume there's no hash
+            self._fetched[img_url]['phash'] = None
         return self._fetched[img_url]['phash']
 
     def thumbnail(self):
