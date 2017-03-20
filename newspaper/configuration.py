@@ -47,6 +47,7 @@ class Configuration(object):
         # Setting this to true will fetch whole image to calculate a perceptual hash
         self.fetch_top_image_hash = False
         self.image_dimension_ration = 16 / 9.0
+        self.image_proxy = None
 
         # Follow meta refresh redirect when downloading
         self.follow_meta_refresh = False

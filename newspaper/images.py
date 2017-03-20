@@ -97,7 +97,7 @@ def clean_url(url):
     return url
 
 
-def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
+def fetch_url(url, useragent, referer=None, retries=1, dimension=False, proxy=None):
     cur_try = 0
     url = clean_url(url)
     if not url.startswith(('http://', 'https://')):
@@ -106,7 +106,7 @@ def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
     response = None
     while True:
         try:
-            response = requests.get(url, stream=True, timeout=5, headers={
+            response = requests.get(url if not proxy else proxy(url), stream=True, timeout=5, headers={
                 'User-Agent': useragent,
                 'Referer': referer,
             })
@@ -177,8 +177,8 @@ def fetch_url(url, useragent, referer=None, retries=1, dimension=False):
                     response.raw._connection.close()
 
 
-def fetch_image_dimension(url, useragent, referer=None, retries=1):
-    return fetch_url(url, useragent, referer, retries, dimension=True)
+def fetch_image_dimension(url, useragent, referer=None, retries=1, proxy=None):
+    return fetch_url(url, useragent, referer, retries, dimension=True, proxy=proxy)
 
 
 class Scraper:
@@ -189,6 +189,9 @@ class Scraper:
         self.top_img = article.top_img
         self.config = article.config
         self.useragent = self.config.browser_user_agent
+        self.proxy = None
+        if self.config.image_proxy:
+            self.proxy = lambda url: self.config.image_proxy + urllib.parse.quote_plus(url)
         self._fetched = {}
 
     def largest_image_url(self):
@@ -260,7 +263,7 @@ class Scraper:
                     dimensions = (None, None)
             else:
                 dimensions = fetch_image_dimension(
-                    img_url, self.useragent, referer=self.url)
+                    img_url, self.useragent, referer=self.url, proxy=self.proxy)
 
             self._fetched[img_url]['dimensions'] = dimensions
         return self._fetched[img_url]['dimensions']
@@ -270,7 +273,7 @@ class Scraper:
             if img_url not in self._fetched:
                 self._fetched[img_url] = {}
             self._fetched[img_url]['image'] = fetch_url(img_url, self.useragent,
-                                                        referer=self.url)
+                                                        referer=self.url, proxy=self.proxy)
         return self._fetched[img_url]['image']
 
     def phash(self, img_url):
@@ -287,7 +290,7 @@ class Scraper:
         try:
             image = str_to_image(image_str)
             self._fetched[img_url]['phash'] = str(imagehash.phash(image))
-        except OSError:
+        except (OSError, SyntaxError):
             # downloaded image might be invalid, we can't do nothing about it so just assume there's no hash
             self._fetched[img_url]['phash'] = None
         return self._fetched[img_url]['phash']
