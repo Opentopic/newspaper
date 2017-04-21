@@ -323,10 +323,10 @@ class Article(object):
         # Compute per language included in nltk number of unique stopwords appearing in analyzed text
         for language in stopwords.fileids():
             stopwords_set = set(stopwords.words(language))
-            if len(stopwords_set) <= 2:
-                continue
             words_set = set(words)
             common_elements = words_set.intersection(stopwords_set)
+            if len(common_elements) <= 2:
+                continue
 
             languages_ratios[language] = len(common_elements)  # language "score"
 
