@@ -252,7 +252,6 @@ class Article(object):
         # Before any computations on the body, clean DOM object
         self.doc = self.document_cleaner.clean(self.doc)
 
-        text = ''
         self.top_node = self.extractor.calculate_best_node(self.doc)
         if self.top_node is not None:
             video_extractor = VideoExtractor(self.config, self.top_node)
@@ -297,6 +296,9 @@ class Article(object):
         text = BeautifulSoup(text, "html.parser").get_text()
         ratios = self._calculate_languages_ratios(text)
 
+        if not ratios:
+            return
+
         most_rated_language = max(ratios, key=ratios.get)
 
         self.set_language(most_rated_language)
@@ -321,6 +323,8 @@ class Article(object):
         # Compute per language included in nltk number of unique stopwords appearing in analyzed text
         for language in stopwords.fileids():
             stopwords_set = set(stopwords.words(language))
+            if len(stopwords_set) <= 2:
+                continue
             words_set = set(words)
             common_elements = words_set.intersection(stopwords_set)
 
