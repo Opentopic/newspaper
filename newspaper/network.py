@@ -6,7 +6,11 @@ must be abstracted in this file.
 import os
 import subprocess
 from contextlib import closing
+from http.client import HTTPException
 from urllib.parse import urljoin
+
+from requests import RequestException
+from requests.packages.urllib3.exceptions import HTTPError
 
 from . import CASPERJS_PATH
 
@@ -37,6 +41,10 @@ def get_request_kwargs(timeout, useragent):
     }
 
 
+class NetworkError(Exception):
+    pass
+
+
 def get_html(url, config=None, response=None):
     """Retrieves the html for either a url or a response object. All html
     extractions MUST come from this method due to some intricies in the
@@ -59,26 +67,29 @@ def get_html(url, config=None, response=None):
 
     def _get_using_requests():
         result = None
-        with closing(requests.get(url=url, stream=True, **get_request_kwargs(timeout, useragent))) as _response:
-            response_code = _response.status_code
-            if not (200 <= response_code <= 299):
-                raise Exception('Invalid status code: {}'.format(response_code))
-            length = _response.headers.get('content-length')
-            type = _response.headers.get('content-type')
-            if length is not None and int(length) >= size_limit:
-                log.warning('Requests response is too big, aborting', extra={
-                    'url': url,
-                    'length': length,
-                })
-            elif type is not None and any(filter(lambda x: type.startswith(x[:-1]) if x[-1] == '*' else type == x,
-                                                 invalid_types)):
-                log.warning('Requests response has invalid content type, aborting', extra={
-                    'url': url,
-                    'content_type': type,
-                })
-            else:
-                log.info('Url: {} got response from Requests'.format(url))
-                result = _response.text if _response.encoding != FAIL_ENCODING else _response.content
+        try:
+            with closing(requests.get(url=url, stream=True, **get_request_kwargs(timeout, useragent))) as _response:
+                response_code = _response.status_code
+                if not (200 <= response_code <= 299):
+                    raise NetworkError('Invalid status code: {}'.format(response_code))
+                length = _response.headers.get('content-length')
+                type = _response.headers.get('content-type')
+                if length is not None and int(length) >= size_limit:
+                    log.warning('Requests response is too big, aborting', extra={
+                        'url': url,
+                        'length': length,
+                    })
+                elif type is not None and any(filter(lambda x: type.startswith(x[:-1]) if x[-1] == '*' else type == x,
+                                                     invalid_types)):
+                    log.warning('Requests response has invalid content type, aborting', extra={
+                        'url': url,
+                        'content_type': type,
+                    })
+                else:
+                    log.info('Url: {} got response from Requests'.format(url))
+                    result = _response.text if _response.encoding != FAIL_ENCODING else _response.content
+        except (RequestException, ConnectionResetError, ConnectionError, HTTPException, HTTPError) as e:
+            raise NetworkError('Network error') from e
         return result or ''
 
     if config.content_strategy['name'] == 'casperjs':
@@ -97,7 +108,7 @@ def get_html(url, config=None, response=None):
             response_code_part = str(output).split('\\n')[0]
             response_code = int(''.join(filter(lambda x: x.isdigit(), response_code_part)))
             if not (200 <= response_code <= 299):
-                raise Exception('Invalid status code: {}'.format(response_code))
+                raise NetworkError('Invalid status code: {}'.format(response_code))
             log.info('Url: {} got response from CasperJS'.format(url))
         except subprocess.TimeoutExpired as e:
             log.info('Url: {} got timeout from CasperJS'.format(url))
@@ -137,7 +148,7 @@ def get_html(url, config=None, response=None):
         resp = requests.get(endpoint, params=payload)
         response_code = resp.status_code
         if not (200 <= response_code <= 299):
-            raise Exception('Invalid status code: {}'.format(response_code))
+            raise NetworkError('Invalid status code: {}'.format(response_code))
         log.info('Url: {} got response from Splash'.format(url))
         return resp.content
 
@@ -164,7 +175,7 @@ class MRequest(object):
                                      self.timeout, self.useragent))
             if self.config.http_success_only:
                 self.resp.raise_for_status()
-        except requests.exceptions.RequestException as e:
+        except RequestException as e:
             log.critical('[REQUEST FAILED] ' + str(e))
 
 
