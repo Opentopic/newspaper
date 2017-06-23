@@ -22,7 +22,7 @@ from .cleaners import DocumentCleaner
 from .configuration import Configuration
 from .extractors import ContentExtractor
 from .outputformatters import OutputFormatter
-from .utils import (URLHelper, RawHelper, extend_config,
+from .utils import (URLHelper, RawHelper, extend_config, language_dict,
                     get_available_languages, extract_meta_refresh)
 from .videos.extractors import VideoExtractor
 
@@ -287,7 +287,7 @@ class Article(object):
             text = self.text
 
         text = BeautifulSoup(text, "html.parser").get_text()
-        self.set_language(langdetect(text))
+        self.set_language(language_dict[langdetect(text)].lower())
 
     def fetch_images(self, fetch_hash=False):
         if self.clean_doc is not None:
