@@ -10,7 +10,7 @@ import os
 import glob
 from bs4 import BeautifulSoup
 
-from langdetect import detect as langdetect
+from langdetect import detect as langdetect, lang_detect_exception
 
 from . import images
 from . import network
@@ -287,7 +287,13 @@ class Article(object):
             text = self.text
 
         text = BeautifulSoup(text, "html.parser").get_text()
-        self.set_language(language_dict[langdetect(text)].lower())
+        language = None
+        try:
+            language = langdetect(text)
+        except lang_detect_exception.LangDetectException:
+            pass
+        if language and language in language_dict:
+            self.set_language(language_dict[language].lower())
 
     def fetch_images(self, fetch_hash=False):
         if self.clean_doc is not None:
