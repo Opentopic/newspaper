@@ -77,8 +77,8 @@ class ContentExtractor(object):
         cases because the stopwords_class has to set incase the lang
         is not latin based
         """
+        self.language = meta_lang
         if meta_lang:
-            self.language = meta_lang
             self.stopwords_class = \
                 self.config.get_stopwords_class(meta_lang)
 
