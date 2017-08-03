@@ -24,6 +24,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 
 from . import urls
 from .utils import StringReplacement, StringSplitter
+from .nlp import word_count
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +60,13 @@ KNOWN_ARTICLE_CONTENT_TAGS = [
 
 
 class ContentExtractor(object):
+    MIN_STOPWORDS = 3
+
     def __init__(self, config):
+        """
+        :param config:
+        :type config: newspaper.configuration.Configuration
+        """
         self.config = config
         self.parser = self.config.get_parser()
         self.language = config.language
@@ -181,6 +188,12 @@ class ContentExtractor(object):
             if len(nodes):
                 return nodes[0]
         return None
+
+    def count_stopwords(self, node):
+        if not self.language:
+            return None
+        return self.stopwords_class(language=self.language). \
+            get_stopword_count(node).get_stopword_count()
 
     def is_articlebody(self, node):
         for item in KNOWN_ARTICLE_CONTENT_TAGS:
@@ -859,10 +872,11 @@ class ContentExtractor(object):
 
         for node in nodes_to_check:
             text_node = self.parser.getText(node)
-            word_stats = self.stopwords_class(language=self.language). \
-                get_stopword_count(text_node)
+            stopwords = self.count_stopwords(text_node)
+            if stopwords is None:
+                stopwords = word_count(text_node)
             high_link_density = self.is_highlink_density(node)
-            if word_stats.get_stopword_count() > 2 and not high_link_density:
+            if stopwords >= self.MIN_STOPWORDS and not high_link_density:
                 nodes_with_text.append(node)
 
         nodes_number = len(nodes_with_text)
@@ -887,9 +901,8 @@ class ContentExtractor(object):
                         boost_score = float(5)
 
             text_node = self.parser.getText(node)
-            word_stats = self.stopwords_class(language=self.language). \
-                get_stopword_count(text_node)
-            upscore = int(word_stats.get_stopword_count() + boost_score)
+            stopwords = self.count_stopwords(text_node) or 0
+            upscore = int(stopwords + boost_score)
 
             parent_node = self.parser.getParent(node)
             self.update_score(parent_node, upscore)
@@ -923,7 +936,7 @@ class ContentExtractor(object):
         return top_node
 
     def is_boostable(self, node):
-        """Alot of times the first paragraph might be the caption under an image
+        """A lot of times the first paragraph might be the caption under an image
         so we'll want to make sure if we're going to boost a parent node that
         it should be connected to other paragraphs, at least for the first n
         paragraphs so we'll want to make sure that the next sibling is a
@@ -938,15 +951,15 @@ class ContentExtractor(object):
         for current_node in nodes:
             # <p>
             current_node_tag = self.parser.getTag(current_node)
-            if current_node_tag == para:
-                if steps_away >= max_stepsaway_from_node:
-                    return False
-                paragraph_text = self.parser.getText(current_node)
-                word_stats = self.stopwords_class(language=self.language). \
-                    get_stopword_count(paragraph_text)
-                if word_stats.get_stopword_count() > minimum_stopword_count:
-                    return True
-                steps_away += 1
+            if current_node_tag != para:
+                continue
+            if steps_away >= max_stepsaway_from_node:
+                return False
+            paragraph_text = self.parser.getText(current_node)
+            stopwords = self.count_stopwords(paragraph_text) or 0
+            if stopwords > minimum_stopword_count:
+                return True
+            steps_away += 1
         return False
 
     def walk_siblings(self, node):
@@ -974,36 +987,34 @@ class ContentExtractor(object):
         """Adds any siblings that may have a decent score to this node
         """
         if current_sibling.tag == 'p' and \
-                        len(self.parser.getText(current_sibling)) > 0:
+                len(self.parser.getText(current_sibling)) > 0:
             e0 = current_sibling
             if e0.tail:
                 e0 = copy.deepcopy(e0)
                 e0.tail = ''
             return [e0]
-        else:
-            potential_paragraphs = self.parser.getElementsByTag(
-                current_sibling, tag='p')
-            if potential_paragraphs is None:
-                return []
-            else:
-                ps = []
-                for first_paragraph in potential_paragraphs:
-                    text = self.parser.getText(first_paragraph)
-                    if len(text) > 0:
-                        word_stats = self.stopwords_class(
-                            language=self.language). \
-                            get_stopword_count(text)
-                        paragraph_score = word_stats.get_stopword_count()
-                        sibling_baseline_score = float(.30)
-                        high_link_density = self.is_highlink_density(
-                            first_paragraph)
-                        score = float(baseline_score_siblings_para *
-                                      sibling_baseline_score)
-                        if score < paragraph_score and not high_link_density:
-                            p = self.parser.createElement(
-                                tag='p', text=text, tail=None)
-                            ps.append(p)
-                return ps
+        potential_paragraphs = self.parser.getElementsByTag(
+            current_sibling, tag='p')
+        if potential_paragraphs is None:
+            return []
+        ps = []
+        for first_paragraph in potential_paragraphs:
+            text = self.parser.getText(first_paragraph)
+            if len(text) == 0:
+                continue
+            paragraph_score = self.count_stopwords(text)
+            if paragraph_score is None:
+                paragraph_score = word_count(text)
+            sibling_baseline_score = float(.30)
+            high_link_density = self.is_highlink_density(
+                first_paragraph)
+            score = float(baseline_score_siblings_para *
+                          sibling_baseline_score)
+            if score < paragraph_score and not high_link_density:
+                p = self.parser.createElement(
+                    tag='p', text=text, tail=None)
+                ps.append(p)
+        return ps
 
     def get_siblings_score(self, top_node):
         """We could have long articles that have tons of paragraphs
@@ -1021,12 +1032,13 @@ class ContentExtractor(object):
 
         for node in nodes_to_check:
             text_node = self.parser.getText(node)
-            word_stats = self.stopwords_class(language=self.language). \
-                get_stopword_count(text_node)
+            stopwords = self.count_stopwords(text_node)
+            if stopwords is None:
+                stopwords = word_count(text_node)
             high_link_density = self.is_highlink_density(node)
-            if word_stats.get_stopword_count() > 2 and not high_link_density:
+            if stopwords >= self.MIN_STOPWORDS and not high_link_density:
                 paragraphs_number += 1
-                paragraphs_score += word_stats.get_stopword_count()
+                paragraphs_score += stopwords
 
         if paragraphs_number > 0:
             base = paragraphs_score / paragraphs_number

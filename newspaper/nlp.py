@@ -14,6 +14,16 @@ from collections import Counter
 
 from . import settings
 
+try:
+    import nltk.data
+    from nltk.tokenize import RegexpTokenizer
+    eng_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    regexp_tokenizer = RegexpTokenizer(r'\w+')
+except ImportError:
+    eng_tokenizer = None
+    regexp_tokenizer = None
+
+
 with open(settings.NLP_STOPWORDS_EN, 'r') as f:
     stopwords = set([w.strip() for w in f.readlines()])
 
@@ -136,12 +146,14 @@ def keywords(text):
 def split_sentences(text):
     """Split a large string into sentences
     """
-    import nltk.data
-    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
-
-    sentences = tokenizer.tokenize(text)
+    sentences = eng_tokenizer.tokenize(text)
     sentences = [x.replace('\n', '') for x in sentences if len(x) > 10]
     return sentences
+
+
+def word_count(text):
+    tokens = regexp_tokenizer.tokenize(text)
+    return len(tokens)
 
 
 def length_score(sentence_len):

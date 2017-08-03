@@ -11,6 +11,7 @@ from html import unescape
 import logging
 
 from .text import innerTrim
+from .nlp import word_count
 
 
 log = logging.getLogger(__name__)
@@ -19,6 +20,10 @@ log = logging.getLogger(__name__)
 class OutputFormatter(object):
 
     def __init__(self, config):
+        """
+        :param config:
+        :type config: newspaper.configuration.Configuration
+        """
         self.top_node = None
         self.config = config
         self.parser = self.config.get_parser()
@@ -190,12 +195,14 @@ class OutputFormatter(object):
         for el in all_nodes:
             tag = self.parser.getTag(el)
             text = self.parser.getText(el)
-            stop_words = self.stopwords_class(
-                language=self.language).get_stopword_count(text)
+            if self.language:
+                stopwords = self.stopwords_class(language=self.language).\
+                    get_stopword_count(text).get_stopword_count()
+            else:
+                stopwords = word_count(text)
             if (tag != 'br' or text != '\\r') and \
-                    stop_words.get_stopword_count() < 3 and \
-                    len(self.parser.getElementsByTag(
-                        el, tag='object')) == 0 and \
+                    stopwords < 3 and \
+                    len(self.parser.getElementsByTag(el, tag='object')) == 0 and \
                     len(self.parser.getElementsByTag(el, tag='embed')) == 0:
                 self.parser.remove(el)
             # TODO
