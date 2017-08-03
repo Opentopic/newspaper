@@ -168,8 +168,6 @@ class Article(object):
         self.parse()
         log.info('Url: {} starting to nlp'.format(self.url))
         self.nlp()
-        log.info('Url: {} starting to detect_language'.format(self.url))
-        self.detect_language()
         log.info('Url: {} ending build'.format(self.url))
 
     def download(self, input_html=None, title=None, recursion_counter=0):
@@ -227,10 +225,6 @@ class Article(object):
         meta_lang = self.extractor.get_meta_lang(self.clean_doc)
         self.set_meta_language(meta_lang)
 
-        if self.config.use_meta_language:
-            self.extractor.update_language(self.meta_lang)
-            self.output_formatter.update_language(self.meta_lang)
-
         meta_favicon = self.extractor.get_favicon(self.url, self.clean_doc)
         self.set_meta_favicon(meta_favicon)
 
@@ -266,6 +260,13 @@ class Article(object):
         # Before any computations on the body, clean DOM object
         self.doc = self.document_cleaner.clean(self.doc)
 
+        self.detect_language()
+
+        if not self.language and self.config.use_meta_language:
+            self.language = self.meta_lang
+        self.extractor.update_language(self.language)
+        self.output_formatter.update_language(self.language)
+
         self.top_node = self.extractor.calculate_best_node(self.doc)
         if self.top_node is not None:
             video_extractor = VideoExtractor(self.config, self.top_node)
@@ -297,19 +298,20 @@ class Article(object):
         :rtype: str
         """
         self.throw_if_not_downloaded_verbose()
-        self.throw_if_not_parsed_verbose()
 
         if text is None:
             text = self.text
 
-        text = BeautifulSoup(text, "html.parser").get_text()
+        if not text:
+            text = self.config.get_parser().getText(self.doc)
+
         language = None
         try:
             language = langdetect(text)
         except lang_detect_exception.LangDetectException:
             pass
         if language and language in language_dict:
-            self.set_language(language_dict[language].lower())
+            self.language = language_dict[language].lower()
 
     def fetch_images(self, fetch_hash=False):
         if self.clean_doc is not None:
@@ -575,10 +577,6 @@ class Article(object):
         """
         movie_urls = [o.src for o in movie_objects if o and o.src]
         self.movies = movie_urls
-
-    def set_language(self, language):
-        if language:
-            self.language = language
 
     def throw_if_not_downloaded_verbose(self):
         """Parse ArticleDownloadState -> log readable status
