@@ -303,7 +303,7 @@ class Article(object):
             text = self.text
 
         if not text:
-            text = self.config.get_parser().getText(self.doc)
+            text = self.config.get_parser().getText(self.clean_doc)
 
         language = None
         try:
