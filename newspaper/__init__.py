@@ -14,9 +14,10 @@ else:
     CASPERJS_PATH = '/usr/bin/casperjs'
 del os
 
-from .article import Article, ArticleException
 from .api import (build, build_article, fulltext, hot, languages,
-                  popular_urls, NewsPool, Configuration as Config)
+                  popular_urls, Configuration as Config)
+from .article import Article, ArticleException
+from .mthreading import NewsPool
 from .source import Source
 from .version import __version__
 

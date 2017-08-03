@@ -29,6 +29,8 @@ from .settings import cj
 log = logging.getLogger()
 
 
+FAIL_ENCODING = 'ISO-8859-1'
+
 def get_request_kwargs(timeout, useragent):
     """This Wrapper method exists b/c some values in req_kwargs dict
     are methods which need to be called every time we make a request
@@ -46,14 +48,21 @@ class NetworkError(Exception):
 
 
 def get_html(url, config=None, response=None):
-    """Retrieves the html for either a url or a response object. All html
-    extractions MUST come from this method due to some intricies in the
-    requests module. To get the encoding, requests only uses the HTTP header
-    encoding declaration requests.utils.get_encoding_from_headers() and reverts
-    to ISO-8859-1 if it doesn't find one. This results in incorrect character
-    encoding in a lot of cases.
+    """HTTP response code agnostic 
     """
-    FAIL_ENCODING = 'ISO-8859-1'
+    try:
+        return get_html_2XX_only(url, config, response)
+    except requests.exceptions.RequestException as e:
+        log.debug('get_html() error. %s on URL: %s' % (e, url))
+        return ''
+
+
+def get_html_2XX_only(url, config=None, response=None):
+    """Consolidated logic for http requests from newspaper. We handle error cases:
+    - Attempt to find encoding of the html by using HTTP header. Fallback to 
+      'ISO-8859-1' if not provided.
+    - Error out if a non 2XX HTTP response code is returned.
+    """
     config = config or Configuration()
     useragent = config.browser_user_agent
     timeout = config.request_timeout
@@ -61,9 +70,7 @@ def get_html(url, config=None, response=None):
     invalid_types = config.invalid_content_types
 
     if response is not None:
-        if response.encoding != FAIL_ENCODING:
-            return response.text
-        return response.content
+        return _get_html_from_response(response)
 
     def _get_using_requests():
         result = None
@@ -87,7 +94,7 @@ def get_html(url, config=None, response=None):
                     })
                 else:
                     log.info('Url: {} got response from Requests'.format(url))
-                    result = _response.text if _response.encoding != FAIL_ENCODING else _response.content
+                    result = _get_html_from_response(_response)
         except (RequestException, ConnectionResetError, ConnectionError, HTTPException, HTTPError) as e:
             raise NetworkError('Network error') from e
         return result or ''
@@ -155,6 +162,16 @@ def get_html(url, config=None, response=None):
     return _get_using_requests()
 
 
+def _get_html_from_response(response):
+    if response.encoding != FAIL_ENCODING:
+        # return response as a unicode string
+        html = response.text
+    else:
+        # don't attempt decode, return response in bytes
+        html = response.content
+    return html or ''
+
+
 class MRequest(object):
     """Wrapper for request object for multithreading. If the domain we are
     crawling is under heavy load, the self.resp will be left as None.
@@ -199,28 +216,3 @@ def multithread_request(urls, config=None):
     pool.wait_completion()
     return m_requests
 
-# def async_request(urls, timeout=7):
-#    """receives a list of requests and sends them all
-#    asynchronously at once"""
-#
-#    rs = (grequests.request('GET', url,
-#          **get_request_kwargs(timeout)) for url in urls)
-#    responses = grequests.map(rs, size=10)
-#
-#    return responses
-
-
-# def sync_request(urls_or_url, config=None):
-#    """
-#    Wrapper for a regular request, no asyn nor multithread.
-#    """
-#    # TODO config = default_config if not config else config
-#    useragent = config.browser_user_agent
-#    timeout = config.request_timeout
-#    if isinstance(urls_or_url, list):
-#        resps = [requests.get(url, **get_request_kwargs(timeout, useragent))
-#                                                for url in urls_or_url]
-#        return resps
-#    else:
-#        return requests.get(urls_or_url,
-#                            **get_request_kwargs(timeout, useragent))

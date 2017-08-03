@@ -12,6 +12,8 @@ from bs4 import BeautifulSoup
 
 from langdetect import detect as langdetect, lang_detect_exception
 
+import requests
+
 from . import images
 from . import network
 from . import nlp
@@ -27,6 +29,12 @@ from .utils import (URLHelper, RawHelper, extend_config, language_dict,
 from .videos.extractors import VideoExtractor
 
 log = logging.getLogger()
+
+
+class ArticleDownloadState(object):
+    NOT_STARTED = 0
+    FAILED_RESPONSE = 1
+    SUCCESS = 2
 
 
 class ArticleException(Exception):
@@ -107,10 +115,10 @@ class Article(object):
         # The HTML of this article's main node (most important part)
         self.article_html = ''
 
-        # Flags warning users in-case they forget to download() or parse()
-        # or if they call methods out of order
+        # Keep state for downloads and parsing
         self.is_parsed = False
-        self.is_downloaded = False
+        self.download_state = ArticleDownloadState.NOT_STARTED
+        self.download_exception_msg = None
 
         # Meta description field in the HTML source
         self.meta_description = ""
@@ -153,7 +161,7 @@ class Article(object):
         Don't normally call this method b/c it's good to multithread articles
         on a source (newspaper) level.
         """
-        if not self.is_downloaded:
+        if self.download_state == ArticleDownloadState.NOT_STARTED:
             log.info('Url: {} starting to download'.format(self.url))
             self.download()
         log.info('Url: {} starting to parse'.format(self.url))
@@ -164,27 +172,37 @@ class Article(object):
         self.detect_language()
         log.info('Url: {} ending build'.format(self.url))
 
-    def download(self, html=None, title=None):
+    def download(self, input_html=None, title=None, recursion_counter=0):
         """Downloads the link's HTML content, don't use if you are batch async
         downloading articles
+
+        recursion_counter (currently 1) stops refreshes that are potentially
+        infinite
         """
-        if html is None:
-            html = network.get_html(self.url, self.config)
+        if input_html is None:
+            try:
+                html = network.get_html_2XX_only(self.url, self.config)
+            except requests.exceptions.RequestException as e:
+                self.download_state = ArticleDownloadState.FAILED_RESPONSE
+                self.download_exception_msg = str(e)
+                log.debug('Download failed on URL %s because of %s' %
+                          (self.url, self.download_exception_msg))
+                return
+        else:
+            html = input_html
 
         if self.config.follow_meta_refresh:
             meta_refresh_url = extract_meta_refresh(html)
-            if meta_refresh_url:
-                return self.download(html=network.get_html(meta_refresh_url))
+            if meta_refresh_url and recursion_counter < 1:
+                return self.download(
+                    input_html=network.get_html(meta_refresh_url),
+                    recursion_counter=recursion_counter + 1)
 
         self.set_html(html)
-
-        if title is not None:
-            self.set_title(title)
+        self.set_title(title)
 
     def parse(self):
-        if not self.is_downloaded:
-            raise ArticleException('You must `download()` an article before '
-                  'calling `parse()` on it!')
+        self.throw_if_not_downloaded_verbose()
 
         self.doc = self.config.get_parser().fromstring(self.html)
         self.clean_doc = copy.deepcopy(self.doc)
@@ -278,10 +296,8 @@ class Article(object):
         :return: Most scored language guessed
         :rtype: str
         """
-        if not self.is_downloaded or not self.is_parsed:
-            raise ArticleException(
-                    'You must `download()` and `parse()` an article before '
-                    'calling `detect_language()` on it!')
+        self.throw_if_not_downloaded_verbose()
+        self.throw_if_not_parsed_verbose()
 
         if text is None:
             text = self.text
@@ -375,10 +391,8 @@ class Article(object):
     def nlp(self):
         """Keyword extraction wrapper
         """
-        if not self.is_downloaded or not self.is_parsed:
-            raise ArticleException(
-                    'You must `download()` and `parse()` an article before '
-                    'calling `nlp()` on it!')
+        self.throw_if_not_downloaded_verbose()
+        self.throw_if_not_parsed_verbose()
 
         text_keyws = list(nlp.keywords(self.text).keys())
         title_keyws = list(nlp.keywords(self.title).keys())
@@ -439,27 +453,23 @@ class Article(object):
                 self.set_top_img_no_check(src_url, s.dimensions(src_url), phash)
         except TypeError as e:
             if "Can't convert 'NoneType' object to str implicitly" in e.args[0]:
-                log.debug("No pictures found. Top image not set, %s" % e)
-            elif "timed out" in e.args[0]:
-                log.debug("Download of picture timed out. Top image not set, %s" % e)
+                log.debug('No pictures found. Top image not set, %s' % e)
+            elif 'timed out' in e.args[0]:
+                log.debug('Download of picture timed out. Top image not set, %s' % e)
             else:
-                log.exception('TypeError other than None type error. Cannot set top image using the Reddit algorithm. '
-                              'Possible error with PIL., %s' % e)
+                log.exception('TypeError other than None type error. '
+                              'Cannot set top image using the Reddit '
+                              'algorithm. Possible error with PIL., %s' % e)
         except Exception as e:
-            log.exception('Other error with setting top image using the Reddit algorithm. '
-                          'Possible error with PIL, %s' % e)
+            log.exception('Other error with setting top image using the '
+                          'Reddit algorithm. Possible error with PIL, %s' % e)
 
     def set_base_url(self, base_url):
         self.base_url = base_url
 
-    def set_title(self, title):
-        if self.title and not title:
-            # Title has already been set by an educated guess and
-            # <title> extraction failed
-            return
-        title = title[:self.config.MAX_TITLE]
-        if title:
-            self.title = title
+    def set_title(self, input_title):
+        if input_title:
+            self.title = input_title[:self.config.MAX_TITLE]
 
     def set_text(self, text):
         text = text[:self.config.MAX_TEXT]
@@ -473,7 +483,7 @@ class Article(object):
             if isinstance(html, bytes):
                 html = self.config.get_parser().get_unicode_html(html)
             self.html = html
-            self.is_downloaded = True
+            self.download_state = ArticleDownloadState.SUCCESS
 
     def set_article_html(self, article_html):
         """Sets the HTML of just the article's `top_node`
@@ -569,3 +579,22 @@ class Article(object):
     def set_language(self, language):
         if language:
             self.language = language
+
+    def throw_if_not_downloaded_verbose(self):
+        """Parse ArticleDownloadState -> log readable status
+        -> maybe throw ArticleException
+        """
+        if self.download_state == ArticleDownloadState.NOT_STARTED:
+            raise ArticleException('You must `download()` an article first!')
+        elif self.download_state == ArticleDownloadState.FAILED_RESPONSE:
+            raise ArticleException(
+                'Article `download()` failed with %s on URL %s' %
+                (self.download_exception_msg, self.url)
+            )
+
+    def throw_if_not_parsed_verbose(self):
+        """Parse `is_parsed` status -> log readable status
+        -> maybe throw ArticleException
+        """
+        if not self.is_parsed:
+            raise ArticleException('You must `parse()` an article first!')
