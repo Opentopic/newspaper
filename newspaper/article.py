@@ -311,7 +311,7 @@ class Article(object):
         except lang_detect_exception.LangDetectException:
             pass
         if language and language in language_dict:
-            self.language = language_dict[language].lower()
+            self.language = language
 
     def fetch_images(self, fetch_hash=False):
         if self.clean_doc is not None:
