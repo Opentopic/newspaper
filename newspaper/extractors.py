@@ -192,8 +192,9 @@ class ContentExtractor(object):
     def count_stopwords(self, node):
         if not self.language:
             return None
-        return self.stopwords_class(language=self.language). \
-            get_stopword_count(node).get_stopword_count()
+        ws = self.stopwords_class(language=self.language). \
+            get_stopword_count(node)
+        return ws.get_stopword_count()
 
     def is_articlebody(self, node):
         for item in KNOWN_ARTICLE_CONTENT_TAGS:

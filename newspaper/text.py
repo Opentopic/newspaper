@@ -11,7 +11,7 @@ import os
 import re
 import string
 
-from .utils import FileHelper
+from .utils import FileHelper, get_available_languages
 
 TABSSPACE = re.compile(r'[\s\t]+')
 
@@ -27,15 +27,15 @@ def innerTrim(value):
 
 class WordStats(object):
 
-    def __init__(self):
+    def __init__(self, word_count=None, stop_word_count=None, stop_words=None):
         # total number of stopwords or good words we calc
-        self.stop_word_count = 0
+        self.stop_word_count = stop_word_count
 
         # total number of words on a node
-        self.word_count = 0
+        self.word_count = word_count
 
         # holds an actual list of stop words we have
-        self.stop_words = []
+        self.stop_words = [] if stop_words is None else stop_words
 
     def get_stop_words(self):
         return self.stop_words
@@ -62,11 +62,13 @@ class StopWords(object):
     _cached_stop_words = {}
 
     def __init__(self, language='en'):
-        if language not in self._cached_stop_words:
-            path = os.path.join('text', 'stopwords-%s.txt' % language)
-            self._cached_stop_words[language] = \
-                set(FileHelper.loadResourceFile(path).splitlines())
-        self.STOP_WORDS = self._cached_stop_words[language]
+        self.STOP_WORDS = None
+        if language in get_available_languages():
+            if language not in self._cached_stop_words:
+                path = os.path.join('text', 'stopwords-%s.txt' % language)
+                self._cached_stop_words[language] = \
+                    set(FileHelper.loadResourceFile(path).splitlines())
+            self.STOP_WORDS = self._cached_stop_words[language]
 
     def remove_punctuation(self, content):
         # code taken form
@@ -84,20 +86,18 @@ class StopWords(object):
 
     def get_stopword_count(self, content):
         if not content:
-            return WordStats()
-        ws = WordStats()
+            return WordStats(word_count=0, stop_word_count=0)
         stripped_input = self.remove_punctuation(content)
         candidate_words = self.candidate_words(stripped_input)
-        overlapping_stopwords = []
-        c = 0
-        for w in candidate_words:
-            c += 1
-            if w.lower() in self.STOP_WORDS:
-                overlapping_stopwords.append(w.lower())
+        overlapping_stopwords = None
+        if self.STOP_WORDS:
+            overlapping_stopwords = [w.lower() for w in candidate_words if w.lower() in self.STOP_WORDS]
 
-        ws.set_word_count(c)
-        ws.set_stopword_count(len(overlapping_stopwords))
-        ws.set_stop_words(overlapping_stopwords)
+        ws = WordStats()
+        ws.set_word_count(len(candidate_words))
+        if overlapping_stopwords:
+            ws.set_stopword_count(len(overlapping_stopwords))
+            ws.set_stop_words(overlapping_stopwords)
         return ws
 
 
@@ -141,18 +141,18 @@ class StopWordsKorean(StopWords):
 
     def get_stopword_count(self, content):
         if not content:
-            return WordStats()
-        ws = WordStats()
+            return WordStats(word_count=0, stop_word_count=0)
         stripped_input = self.remove_punctuation(content)
         candidate_words = self.candidate_words(stripped_input)
         overlapping_stopwords = []
-        c = 0
-        for w in candidate_words:
-            c += 1
-            for stop_word in self.STOP_WORDS:
-                overlapping_stopwords.append(stop_word)
+        if self.STOP_WORDS:
+            for w in candidate_words:
+                for stop_word in self.STOP_WORDS:
+                    overlapping_stopwords.append(stop_word)
 
-        ws.set_word_count(c)
-        ws.set_stopword_count(len(overlapping_stopwords))
-        ws.set_stop_words(overlapping_stopwords)
+        ws = WordStats()
+        ws.set_word_count(len(candidate_words))
+        if overlapping_stopwords:
+            ws.set_stopword_count(len(overlapping_stopwords))
+            ws.set_stop_words(overlapping_stopwords)
         return ws

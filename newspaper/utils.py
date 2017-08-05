@@ -20,6 +20,7 @@ import sys
 import threading
 import time
 
+from functools import lru_cache
 from hashlib import sha1
 
 from bs4 import BeautifulSoup
@@ -529,6 +530,7 @@ def get_useragent():
         return agent.strip()
 
 
+@lru_cache(maxsize=None)
 def get_available_languages():
     """Returns a list of available languages and their 2 char input codes
     """
