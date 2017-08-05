@@ -198,6 +198,8 @@ class OutputFormatter(object):
             if self.language:
                 stopwords = self.stopwords_class(language=self.language).\
                     get_stopword_count(text).get_stopword_count()
+                if stopwords is None:
+                    stopwords = word_count(text)
             else:
                 stopwords = word_count(text)
             if (tag != 'br' or text != '\\r') and \
