@@ -303,7 +303,12 @@ class Article(object):
             text = self.text
 
         if not text:
-            text = self.config.get_parser().getText(self.doc)
+            parser = self.config.get_parser()
+            doc = copy.deepcopy(self.clean_doc)
+            body_nodes = parser.getElementsByTag(doc, 'body')
+            if not body_nodes:
+                return
+            text = parser.getText(parser.clean_article_html(body_nodes[0]))
 
         language = None
         try:
