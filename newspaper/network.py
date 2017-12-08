@@ -31,15 +31,17 @@ log = logging.getLogger()
 
 FAIL_ENCODING = 'ISO-8859-1'
 
-def get_request_kwargs(timeout, useragent):
+
+def get_request_kwargs(timeout, useragent, proxies, headers):
     """This Wrapper method exists b/c some values in req_kwargs dict
     are methods which need to be called every time we make a request
     """
     return {
-        'headers': {'User-Agent': useragent},
+        'headers': headers if headers else {'User-Agent': useragent},
         'cookies': cj(),
         'timeout': timeout,
-        'allow_redirects': True
+        'allow_redirects': True,
+        'proxies': proxies
     }
 
 
@@ -48,7 +50,7 @@ class NetworkError(Exception):
 
 
 def get_html(url, config=None, response=None):
-    """HTTP response code agnostic 
+    """HTTP response code agnostic
     """
     try:
         return get_html_2XX_only(url, config, response)
@@ -59,7 +61,7 @@ def get_html(url, config=None, response=None):
 
 def get_html_2XX_only(url, config=None, response=None):
     """Consolidated logic for http requests from newspaper. We handle error cases:
-    - Attempt to find encoding of the html by using HTTP header. Fallback to 
+    - Attempt to find encoding of the html by using HTTP header. Fallback to
       'ISO-8859-1' if not provided.
     - Error out if a non 2XX HTTP response code is returned.
     """
@@ -68,6 +70,8 @@ def get_html_2XX_only(url, config=None, response=None):
     timeout = config.request_timeout
     size_limit = config.size_limit
     invalid_types = config.invalid_content_types
+    proxies = config.proxies
+    headers = config.headers
 
     if response is not None:
         return _get_html_from_response(response)
@@ -75,7 +79,7 @@ def get_html_2XX_only(url, config=None, response=None):
     def _get_using_requests():
         result = None
         try:
-            with closing(requests.get(url=url, stream=True, **get_request_kwargs(timeout, useragent))) as _response:
+            with closing(requests.get(url=url, stream=True, **get_request_kwargs(timeout, useragent, proxies, headers))) as _response:
                 response_code = _response.status_code
                 if not (200 <= response_code <= 299):
                     raise NetworkError('Invalid status code: {}'.format(response_code))
@@ -184,12 +188,14 @@ class MRequest(object):
         config = config or Configuration()
         self.useragent = config.browser_user_agent
         self.timeout = config.request_timeout
+        self.proxies = config.proxies
+        self.headers = config.headers
         self.resp = None
 
     def send(self):
         try:
             self.resp = requests.get(self.url, **get_request_kwargs(
-                                     self.timeout, self.useragent))
+                self.timeout, self.useragent, self.proxies, self.headers))
             if self.config.http_success_only:
                 self.resp.raise_for_status()
         except RequestException as e:

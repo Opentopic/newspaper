@@ -214,6 +214,7 @@ Features
       vi              Vietnamese
       tr              Turkish
       el              Greek
+      uk              Ukrainian
 
 
 Get it now
@@ -309,6 +310,7 @@ Demo
 ----
 
 View a working online demo here: http://newspaper-demo.herokuapp.com
+This is another working online demo: http://newspaper.chinazt.cc/
 
 LICENSE
 -------
